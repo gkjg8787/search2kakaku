@@ -1,0 +1,6 @@
+pydantic >=2.0, <3.0
+httpx
+sqlalchemy >=2.0.15, <3.0
+sqlalchemy_utils
+bs4
+selenium
