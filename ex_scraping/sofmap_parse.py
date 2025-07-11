@@ -7,7 +7,7 @@ OUTPUT_FNAME = "output_file.html"
 URL = "https://www.sofmap.com"
 
 
-def main(argv):
+def main(argv, output_parse_filename=OUTPUT_PARSE_FNAME):
     if len(argv) == 2:
         fname = argv[1]
     else:
@@ -20,7 +20,7 @@ def main(argv):
 
     parser = SofmapParser(html)
     parser.execute(url=url)
-    with open(OUTPUT_PARSE_FNAME, "w") as f:
+    with open(output_parse_filename, "w") as f:
         f.write(json.dumps(parser.get_results().model_dump_json(), ensure_ascii=False))
 
 

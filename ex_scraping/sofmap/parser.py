@@ -7,7 +7,10 @@ from pydantic import BaseModel, Field
 NONE_PRICE = -1
 NONE_POINT = 0
 NONE_STOCK_NUM = 0
+
+# リコレ非対応
 SOFMAP = "sofmap"
+A_SOFMAP = "akiba sofmap"
 
 
 class ParseResult(BaseModel):
@@ -18,7 +21,7 @@ class ParseResult(BaseModel):
     salename: str = ""
     is_success: bool = False
     url: str = ""
-    shopname: str = SOFMAP
+    sitename: str = SOFMAP
     image_url: str = ""
     stock_msg: str = ""
     brand: str = ""
@@ -27,6 +30,7 @@ class ParseResult(BaseModel):
     stock_quantity: int = NONE_STOCK_NUM
     shops_url: str = ""
     sub_price: int = NONE_PRICE
+    shops_with_stock: str = ""
 
 
 class ParseResults(BaseModel):
@@ -50,9 +54,11 @@ class SofmapParser:
         elems = soup.select(ptn)
         if not elems:
             return
+        sitename = self._get_sitename(soup)
         results = ParseResults()
         for elem in elems:
             result = ParseResult()
+            result.sitename = sitename
             result.image_url = self._get_image_url(elem)
             result.title = self._get_title(elem)
             result.price = self._get_price(elem)
@@ -86,12 +92,25 @@ class SofmapParser:
         )
         return text.translate(table).strip()
 
+    def _get_sitename(self, soup) -> str:
+        ptn = r"title"
+        tag = soup.select_one(ptn)
+        if not tag:
+            return SOFMAP
+        title_str = str(tag.text).split("｜")[-1]
+        if "アキバ" in title_str:
+            return A_SOFMAP
+        return SOFMAP
+
     def _get_image_url(self, elem) -> str:
         ptn = r"a.itemimg img"
-        tag = elem.select_one(ptn)
-        if not tag:
+        tags = elem.select(ptn)
+        if not tags:
             return ""
-        return tag["src"]
+        if len(tags) == 1:
+            return tags[0]["src"]
+        else:
+            return tags[1]["src"]
 
     def _get_title(self, elem) -> str:
         ptn = r"a.product_name"
@@ -180,3 +199,57 @@ class SofmapParser:
         except Exception:
             return shops_url, stock_num, NONE_PRICE
         return shops_url, stock_num, sub_price
+
+
+class CategoryResult(BaseModel):
+    gid_to_name: dict[str, str] = Field(default_factory=dict)
+    name_to_gid: dict[str, str] = Field(default_factory=dict)
+
+    def set_gid_and_category_name(self, gid: str, category_name: str):
+        self.gid_to_name[gid] = category_name
+        self.name_to_gid[category_name] = gid
+
+    def get_gid(self, category_name: str) -> str:
+        return self.name_to_gid.get(category_name, "")
+
+    def get_category_name(self, gid: str) -> str:
+        return self.gid_to_name.get(gid, "")
+
+
+class CategoryParser:
+    html_str: str
+    results: CategoryResult
+
+    def __init__(self, html_str: str):
+        self.html_str = html_str
+        self.results = CategoryResult()
+
+    def get_results(self) -> CategoryResult:
+        return self.results
+
+    def execute(self):
+        soup = BeautifulSoup(self.html_str, "html.parser")
+        tag_select = self._get_select(soup)
+        if not tag_select:
+            return
+        ptn = r"option"
+        options = tag_select.select(ptn)
+        results: CategoryResult = self.results
+        if not options:
+            return
+
+        for option in options:
+            if option and "value" in option.attrs:
+                results.set_gid_and_category_name(
+                    gid=option["value"], category_name=option.text
+                )
+                continue
+
+    def _get_select(self, soup):
+        ptn = r"select"
+        selects = soup.select(ptn)
+        for sel in selects:
+            if sel and "name" in sel.attrs:
+                if sel["name"] == "gid":
+                    return sel
+        return None
