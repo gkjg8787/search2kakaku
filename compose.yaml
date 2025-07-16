@@ -15,3 +15,7 @@ services:
       - "7900:7900"
     # コンテナが使用するメモリの上限を設定
     shm_size: "2gb"
+    ulimits:
+      nofile:
+        soft: 32768
+        hard: 32768

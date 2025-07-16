@@ -1,39 +1,32 @@
 import sys
 import os
-import json
 
-import httpx
 
+from app.sofmap.category import dl_sofmap_top, SOFMAP_TOP_URL, A_SOFMAP_TOP_URL
 from sofmap.parser import CategoryParser
+from sofmap.repository import (
+    FileCategoryRepository,
+    FileAkibaCategoryRepository,
+)
 
-
-SOFMAP_URL = "https://www.sofmap.com/"
-A_SOFMAP_URL = "https://a.sofmap.com/"
 
 TEMP_FILENAME = "category_temp111.html"
-OUTPUT_FILENAME = "category.json"
-
-
-def dl_sofmap_top(url, filename):
-    res = httpx.get(url)
-    res.raise_for_status()
-    with open(filename, "w") as f:
-        f.write(res.text)
 
 
 def main(
     argv,
     temp_filename=TEMP_FILENAME,
     is_delete_temp_file=True,
-    output_filename=OUTPUT_FILENAME,
 ):
-    sitename = SOFMAP_URL
+    sitename = SOFMAP_TOP_URL
     if len(argv) == 2:
         target = str(argv[1]).lower()
         if target == "a" or target == "akiba":
-            sitename = A_SOFMAP_URL
+            sitename = A_SOFMAP_TOP_URL
     try:
-        dl_sofmap_top(sitename, temp_filename)
+        text = dl_sofmap_top(sitename)
+        with open(temp_filename, "w") as f:
+            f.write(text.text)
     except Exception as e:
         print(f"ダウンロードに失敗 {e}")
         return
@@ -44,9 +37,12 @@ def main(
         html = f.read()
 
     cp = CategoryParser(html_str=html)
+    if sitename == A_SOFMAP_TOP_URL:
+        repository = FileAkibaCategoryRepository()
+    else:
+        repository = FileCategoryRepository()
     cp.execute()
-    with open(output_filename, "w") as f:
-        f.write(json.dumps(cp.results.name_to_gid, ensure_ascii=False))
+    repository.save(cate=cp.get_results())
 
     if is_delete_temp_file:
         os.remove(temp_filename)
