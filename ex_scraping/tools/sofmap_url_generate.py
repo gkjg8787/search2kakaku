@@ -8,7 +8,7 @@ UTF8 = "utf-8"
 
 def set_argparse(argv):
     parser = argparse.ArgumentParser(
-        description="ウェブサイトから情報を検索するスクリプト。",
+        description="sofmapの検索用URL作成スクリプト。",
         formatter_class=argparse.RawTextHelpFormatter,  # ヘルプメッセージの整形を保持
     )
 
@@ -30,16 +30,41 @@ def set_argparse(argv):
 
     # 3つ目の引数: カテゴリ文字列 (オプション)
     parser.add_argument(
-        "-c",
-        "--category",
+        "-g",
+        "--gid",
         type=str,
-        help="検索対象のカテゴリ文字列（例: 'テクノロジー'、'ニュース'）",
+        default="",
+        help="検索対象のカテゴリのID（例: '002110020010')",
+    )
+    CONDITIONS = ["NEW", "USED", "ALL"]
+    parser.add_argument(
+        "-co",
+        "--condition",
+        type=lambda s: str(s).upper(),
+        choices=CONDITIONS,
+        help=f'検索対象の商品状態: {", ".join(CONDITIONS)}',
     )
     parser.add_argument(
-        "-pd",
-        "--product_type",
-        type=str,
-        help="検索対象の商品状態の文字列（例: 'NEW'、'USED'）",
+        "-ds",
+        "--direct_search",
+        action="store_true",
+        help="検索対象のサイトをショートカットします。",
+    )
+    parser.add_argument(
+        "-dc",
+        "--displaycount",
+        type=int,
+        default=50,
+        help=f"検索対象の表示件数。初期値50",
+    )
+    orderbys = [member.name for member in urlgenerate.OrderByOptions]
+    parser.add_argument(
+        "-o",
+        "--orderby",
+        type=lambda s: str(s).upper(),
+        choices=orderbys,
+        default=urlgenerate.OrderByOptions.DEFAULT.name,
+        help=f'検索の並び順: {", ".join(orderbys)}',
     )
 
     return parser.parse_args(argv[1:])
@@ -47,17 +72,16 @@ def set_argparse(argv):
 
 def main(argv):
     argp = set_argparse(argv)
-    print(argp.search_query)
-    print(argp.akiba)
-    print(argp.category)
-    if argp.akiba:
-        base_url = urlgenerate.A_BASE_URL
-    else:
-        base_url = urlgenerate.BASE_SEARCH_URL
+    print(argp)
     result = urlgenerate.build_search_url(
-        base_url=base_url,
+        is_akiba=argp.akiba,
         search_keyword=argp.search_query,
         query_encode_type=SHIFT_JIS,
+        product_type=argp.condition,
+        direct_search=argp.direct_search,
+        gid=argp.gid,
+        display_count=argp.displaycount,
+        order_by=argp.orderby,
     )
     print(result)
 

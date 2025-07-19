@@ -49,9 +49,10 @@ class SofmapParser:
             result.release_date = self._get_release_date(elem)
             result.point = self._get_point(elem)
             result.condition = self._get_condition(elem)
-            result.shops_url, result.stock_quantity, result.sub_price = (
+            result.used_list_url, result.stock_quantity, result.sub_price = (
                 self._get_stock_quantity(elem)
             )
+            result.shops_with_stock = self._get_shops_with_stock(elem)
             if url:
                 result.url = url
             results.results.append(result)
@@ -162,21 +163,28 @@ class SofmapParser:
         if not tag:
             return "", NONE_STOCK_NUM, NONE_PRICE
         if hasattr(tag, "href"):
-            shops_url = tag["href"]
+            used_list_url = tag["href"]
         else:
-            shops_url = ""
+            used_list_url = ""
         try:
             stock_num = int(re.sub("\\D", "", str(tag.find(string=True))))
         except Exception:
-            return shops_url, NONE_STOCK_NUM, NONE_PRICE
+            return used_list_url, NONE_STOCK_NUM, NONE_PRICE
         sub_price_tag = tag.select_one(r".price-txt")
         if not sub_price_tag:
-            return shops_url, stock_num, NONE_PRICE
+            return used_list_url, stock_num, NONE_PRICE
         try:
             sub_price = int(re.sub("\\D", "", str(sub_price_tag.text)))
         except Exception:
-            return shops_url, stock_num, NONE_PRICE
-        return shops_url, stock_num, sub_price
+            return used_list_url, stock_num, NONE_PRICE
+        return used_list_url, stock_num, sub_price
+
+    def _get_shops_with_stock(self, elem) -> str:
+        ptn = r"dl.used_link.shop a"
+        tag = elem.select_one(ptn)
+        if not tag:
+            return ""
+        return self._trim_str(tag.text)
 
 
 class CategoryParser:

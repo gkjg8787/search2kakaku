@@ -15,7 +15,7 @@ engine = create_engine(sqlite_url, echo=False, connect_args=connect_args)
 async_engine = create_async_engine(
     async_sqlite_url, echo=False, connect_args=connect_args
 )
-aSessionLocal = async_sessionmaker(autocommit=False, autoflush=True, bind=async_engine)
+aSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=async_engine)
 
 
 async def get_async_session():

@@ -52,6 +52,8 @@ async def scrape_and_save(command: ScrapeCommand):
     sparser = SofmapParser(html_str=html)
     sparser.execute(url=command.url)
     results = sparser.get_results()
-    pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(results=results)
+    pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
+        results=results, remove_duplicate=True
+    )
     await save_result(pricelog_list=pricelog_list, ses=command.async_session)
     return True, ""

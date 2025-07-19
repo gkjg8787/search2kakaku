@@ -30,7 +30,7 @@ class PriceLog(SQLBase, table=True):
     stock_msg: str
     point: int = Field(default=constants.NONE_POINT)
     stock_quantity: int = Field(default=constants.NONE_STOCK_NUM)
-    shops_url: str = Field(default="")
+    used_list_url: str = Field(default="")
     sub_price: int = Field(default=constants.NONE_PRICE)
 
     url_id: int | None = Field(default=None, foreign_key="url.id")

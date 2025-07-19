@@ -24,7 +24,7 @@ class ParseResult(BaseModel):
     release_date: str = ""
     point: int = NONE_POINT
     stock_quantity: int = NONE_STOCK_NUM
-    shops_url: str = ""
+    used_list_url: str = ""
     sub_price: int = NONE_PRICE
     shops_with_stock: str = ""
 

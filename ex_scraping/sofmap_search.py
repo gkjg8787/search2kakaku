@@ -10,7 +10,6 @@ from app.sofmap import (
     db_convert,
     cookie_util,
 )
-from app.sofmap.constants import A_BASE_SEARCH_URL, BASE_SEARCH_URL
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sqldb.pricelog import repository as db_repo
 from databases.sqldb import util as db_util
@@ -28,22 +27,47 @@ def set_argparse(argv):
         type=str,
         help="検索したいキーワード（例: 'マリオカートワールド'）",
     )
-
-    # 2つ目の引数: 対象サイト変更オプション (-a)
-    # action='store_true' は、引数が指定された場合にTrue、指定されない場合にFalseを格納する
     parser.add_argument(
         "-a",
         "--akiba",
         action="store_true",
         help="検索対象サイトをwww.sofmap.comからa.sofmap.comに変更します。",
     )
-
-    # 3つ目の引数: カテゴリ文字列 (オプション)
     parser.add_argument(
-        "-c",
+        "-ca",
         "--category",
         type=str,
         help="検索対象のカテゴリ文字列（例: 'PCパーツ'、'スマートフォン'）。完全一致のみ有効",
+    )
+    CONDITIONS = ["NEW", "USED", "ALL"]
+    parser.add_argument(
+        "-co",
+        "--condition",
+        type=lambda s: str(s).upper(),
+        choices=CONDITIONS,
+        help=f'検索対象の商品状態: {", ".join(CONDITIONS)}',
+    )
+    parser.add_argument(
+        "-ds",
+        "--direct_search",
+        action="store_true",
+        help="検索対象のサイトをショートカットします。",
+    )
+    parser.add_argument(
+        "-dc",
+        "--displaycount",
+        type=int,
+        default=50,
+        help=f"検索対象の表示件数。初期値50",
+    )
+    orderbys = [member.name for member in urlgenerate.OrderByOptions]
+    parser.add_argument(
+        "-o",
+        "--orderby",
+        type=lambda s: str(s).upper(),
+        choices=orderbys,
+        default=urlgenerate.OrderByOptions.DEFAULT.name,
+        help=f'検索の並び順: {", ".join(orderbys)}',
     )
     parser.add_argument(
         "--ucaa",
@@ -87,14 +111,18 @@ def main(argv):
         return
     if argp.akiba:
         cate_repo = repository.FileAkibaCategoryRepository()
-        base_url = A_BASE_SEARCH_URL
     else:
         cate_repo = repository.FileCategoryRepository()
-        base_url = BASE_SEARCH_URL
     gid = get_category_id(repository=cate_repo, category_name=argp.category)
     print(f"keyword : {argp.search_query}, gid : {gid}, base_url : {base_url}")
     search_url = urlgenerate.build_search_url(
-        search_keyword=argp.search_query, base_url=base_url, gid=gid
+        search_keyword=argp.search_query,
+        is_akiba=argp.akiba,
+        direct_search=argp.direct_search,
+        gid=gid,
+        product_type=argp.condition,
+        display_count=argp.displaycount,
+        order_by=argp.orderby,
     )
     print(f"generate url : {search_url}")
     cookie_dict_list = cookie_util.create_cookies(
@@ -112,7 +140,9 @@ def main(argv):
     sparser = parser.SofmapParser(html_str=html)
     sparser.execute(url=search_url)
     results = sparser.get_results()
-    pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(results=results)
+    pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
+        results=results, remove_duplicate=True
+    )
     asyncio.run(save_result(pricelog_list=pricelog_list))
     print(f"save to database")
     if argp.verbose:
