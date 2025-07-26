@@ -15,6 +15,9 @@ class ScrapeCommand(BaseModel):
     url: str
     is_ucaa: bool = Field(default=False)
     async_session: Any
+    page_load_timeout: int | None = None
+    tag_wait_timeout: int | None = None
+    selenium_url: str | None = None
 
 
 def is_akiba_sofmap(url: str) -> bool:
@@ -37,17 +40,25 @@ async def save_result(pricelog_list: list[m_pricelog.PriceLog], ses: AsyncSessio
 
 async def scrape_and_save(command: ScrapeCommand):
     if not is_valid_url_by_parse(command.url):
-        return False, f"invalid url ,{command.url}"
+        return False, f"invalid url , url:{command.url}"
     is_a_sofmap = is_akiba_sofmap(command.url)
     cookie_dict_list = cookie_util.create_cookies(
         is_akiba=is_a_sofmap, is_ucaa=command.is_ucaa
     )
+    params = {
+        "url": command.url,
+        "cookie_dict_list": cookie_dict_list,
+    }
+    if command.page_load_timeout:
+        params["page_load_timeout"] = command.page_load_timeout
+    if command.tag_wait_timeout:
+        params["page_load_timeout"] = command.tag_wait_timeout
+    if command.selenium_url:
+        params["selenium_url"] = command.selenium_url
     try:
-        html = download.download_remotely(
-            url=command.url, cookie_dict_list=cookie_dict_list
-        )
+        html = download.download_remotely(**params)
     except Exception as e:
-        return False, f"download error, {e}"
+        return False, f"download error, {e} , url:{command.url}"
     db_util.create_db_and_tables()
     sparser = SofmapParser(html_str=html)
     sparser.execute(url=command.url)

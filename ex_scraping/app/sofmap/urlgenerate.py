@@ -1,6 +1,7 @@
 from urllib.parse import urlencode, quote
-from enum import Enum
+from enum import auto
 
+from common.enums import AutoUpperName
 from .constants import (
     BASE_SEARCH_URL,
     A_BASE_SEARCH_URL,
@@ -10,12 +11,11 @@ from .constants import (
     DEFAULT_SEARCH_DISPLAY_COUNT,
 )
 
-from enum import Enum, auto
 
-
-class AutoUpperName(Enum):
-    def _generate_next_value_(name, start, count, last_values):
-        return name.upper()
+class ProductTypeOptions(AutoUpperName):
+    NEW = auto()
+    USED = auto()
+    ALL = auto()
 
 
 class OrderByOptions(AutoUpperName):
@@ -58,8 +58,7 @@ def build_search_url(
         "gid": gid,
         "dispcnt": display_count,
     }
-    PRODUCT_TYPES = ["NEW", "USED"]
-    if product_type and product_type.upper() in PRODUCT_TYPES:
+    if product_type and product_type.upper() in [pt.name for pt in ProductTypeOptions]:
         param["product_type"] = product_type.upper()
     if OrderByOptions.is_name_in_enum(name=order_by):
         param["order_by"] = order_by.upper()

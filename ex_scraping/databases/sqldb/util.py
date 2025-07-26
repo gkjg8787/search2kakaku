@@ -1,20 +1,25 @@
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import SQLModel, create_engine
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     async_sessionmaker,
 )
 
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-async_sqlite_url = f"sqlite+aiosqlite:///{sqlite_file_name}"
+from common import read_config
 
-connect_args = {"check_same_thread": False}
+databases = read_config.get_databases()
+sync_db_params = URL.create(**databases.sync.model_dump(exclude_none=True))
+async_db_params = URL.create(**databases.a_sync.model_dump(exclude_none=True))
 
-engine = create_engine(sqlite_url, echo=False, connect_args=connect_args)
+sub_params = {
+    "echo": False,
+}
+if "sqlite" in databases.sync.drivername or "sqlite" in databases.a_sync.drivername:
+    sub_params["connect_args"] = {"check_same_thread": False}
 
-async_engine = create_async_engine(
-    async_sqlite_url, echo=False, connect_args=connect_args
-)
+engine = create_engine(sync_db_params, **sub_params)
+
+async_engine = create_async_engine(async_db_params, **sub_params)
 aSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=async_engine)
 
 

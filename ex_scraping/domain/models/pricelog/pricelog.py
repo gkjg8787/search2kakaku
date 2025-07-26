@@ -20,7 +20,7 @@ class Shop(SQLBase, table=True):
 
 
 class PriceLog(SQLBase, table=True):
-    title: str = Field(index=True)
+    title: str
     price: int
     condition: str
     on_sale: bool = Field(default=False)

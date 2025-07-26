@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 from .pricelog import PriceLog, URL, Shop
-from .command import PriceLogGetCommand
+from .command import PriceLogGetCommand, ShopGetCommand, URLGetCommand
 
 
 class IPriceLogRepository(ABC):
@@ -20,7 +19,11 @@ class IURLRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_url(self, url_path: str) -> URL:
+    async def get(self, command: URLGetCommand) -> URL | None:
+        pass
+
+    @abstractmethod
+    async def get_all(self) -> list[URL]:
         pass
 
 
@@ -30,5 +33,5 @@ class IShopRepository(ABC):
         pass
 
     @abstractmethod
-    async def get_by_name(self, name: str) -> Shop:
+    async def get(self, command: ShopGetCommand) -> Shop | None:
         pass

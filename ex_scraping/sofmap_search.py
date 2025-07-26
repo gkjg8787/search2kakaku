@@ -13,6 +13,7 @@ from app.sofmap import (
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sqldb.pricelog import repository as db_repo
 from databases.sqldb import util as db_util
+from common import read_config
 
 
 def set_argparse(argv):
@@ -39,7 +40,7 @@ def set_argparse(argv):
         type=str,
         help="検索対象のカテゴリ文字列（例: 'PCパーツ'、'スマートフォン'）。完全一致のみ有効",
     )
-    CONDITIONS = ["NEW", "USED", "ALL"]
+    CONDITIONS = [pt.name for pt in urlgenerate.ProductTypeOptions]
     parser.add_argument(
         "-co",
         "--condition",
@@ -114,7 +115,7 @@ def main(argv):
     else:
         cate_repo = repository.FileCategoryRepository()
     gid = get_category_id(repository=cate_repo, category_name=argp.category)
-    print(f"keyword : {argp.search_query}, gid : {gid}, base_url : {base_url}")
+    print(f"keyword : {argp.search_query}, gid : {gid}, is_akiba : {argp.akiba}")
     search_url = urlgenerate.build_search_url(
         search_keyword=argp.search_query,
         is_akiba=argp.akiba,
@@ -128,9 +129,15 @@ def main(argv):
     cookie_dict_list = cookie_util.create_cookies(
         is_akiba=argp.akiba, is_ucaa=argp.ucaa
     )
+    sofmapopt = read_config.get_sofmap_options()
+    seleniumopt = read_config.get_selenium_options()
     try:
         html = download.download_remotely(
-            url=search_url, cookie_dict_list=cookie_dict_list
+            url=search_url,
+            cookie_dict_list=cookie_dict_list,
+            page_load_timeout=sofmapopt.selenium.page_load_timeout,
+            tag_wait_timeout=sofmapopt.selenium.tag_wait_timeout,
+            selenium_url=seleniumopt.remote_url,
         )
     except Exception as e:
         print(f"download error {e}")

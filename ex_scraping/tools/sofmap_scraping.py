@@ -5,6 +5,7 @@ import time
 
 from databases.sqldb.util import get_async_session
 from app.sofmap.web_scraper import scrape_and_save, ScrapeCommand
+from common import read_config
 
 
 def set_argparse(argv):
@@ -76,8 +77,17 @@ async def async_main(argv):
             return
 
     async for ses in get_async_session():
+        sofmapopt = read_config.get_sofmap_options()
+        seleniumopt = read_config.get_selenium_options()
         for url in target_urls:
-            command = ScrapeCommand(url=url, async_session=ses, is_ucaa=argp.ucaa)
+            command = ScrapeCommand(
+                url=url,
+                async_session=ses,
+                is_ucaa=argp.ucaa,
+                selenium_url=seleniumopt.remote_url,
+                page_load_timeout=sofmapopt.selenium.page_load_timeout,
+                tag_wait_timeout=sofmapopt.selenium.tag_wait_timeout,
+            )
             await scrape_and_save(command=command)
             time.sleep(1)
 

@@ -36,7 +36,7 @@ def set_argparse(argv):
         default="",
         help="検索対象のカテゴリのID（例: '002110020010')",
     )
-    CONDITIONS = ["NEW", "USED", "ALL"]
+    CONDITIONS = [pt.name for pt in urlgenerate.ProductTypeOptions]
     parser.add_argument(
         "-co",
         "--condition",

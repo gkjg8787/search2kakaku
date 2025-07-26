@@ -48,7 +48,8 @@ class PriceLogRepository(m_repository.IPriceLogRepository):
         if command.id:
             stmt = stmt.where(m_pricelog.PriceLog.id == command.id)
         if command.url:
-            stmt = stmt.where(m_pricelog.PriceLog.url.url == command.url)
+            stmt = stmt.join(m_pricelog.URL)
+            stmt = stmt.where(m_pricelog.URL.url == command.url)
         if command.start_utc_date:
             stmt = stmt.where(m_pricelog.PriceLog.created_at >= command.start_utc_date)
         if command.end_utc_date:
@@ -78,18 +79,28 @@ class URLRepository(m_repository.IURLRepository):
                 if db_url:
                     continue
                 ses.add(url)
-                ses.flush()
+                await ses.flush()
                 adds.append(url)
         await ses.commit()
         for url in adds:
             await ses.refresh(url)
 
-    async def get_by_url(self, url_path: str) -> m_pricelog.URL | None:
+    async def get(self, command: m_command.URLGetCommand) -> m_pricelog.URL | None:
         ses = self.session
-        result = await ses.execute(
-            select(m_pricelog.URL).where(m_pricelog.URL.url == url_path)
-        )
+        stmt = select(m_pricelog.URL)
+        if command.id:
+            stmt = stmt.where(m_pricelog.URL.id == command.id)
+        if command.url:
+            stmt = stmt.where(m_pricelog.URL.url == command.url)
+        result = await ses.execute(stmt)
         return result.scalar()
+
+    async def get_all(self) -> list[m_pricelog.URL]:
+        result = await self.session.execute(select(m_pricelog.URL))
+        db_urls = result.scalars()
+        if not db_urls:
+            return []
+        return db_urls.all()
 
 
 class ShopRepository(m_repository.IShopRepository):
@@ -109,15 +120,18 @@ class ShopRepository(m_repository.IShopRepository):
             if db_shop:
                 continue
             ses.add(shop)
-            ses.flush()
+            await ses.flush()
             adds.append(shop)
         await ses.commit()
         for shop in adds:
             await ses.refresh(shop)
 
-    async def get_by_name(self, name: str) -> m_repository.Shop | None:
+    async def get(self, command: m_command.ShopGetCommand) -> m_repository.Shop | None:
         ses = self.session
-        result = await ses.execute(
-            select(m_pricelog.Shop).where(m_pricelog.Shop.name == name)
-        )
+        stmt = select(m_pricelog.Shop)
+        if command.id:
+            stmt = stmt.where(m_pricelog.Shop.id == command.id)
+        if command.name:
+            stmt = stmt.where(m_pricelog.Shop.name == command.name)
+        result = await ses.execute(stmt)
         return result.scalar()
