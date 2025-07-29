@@ -18,3 +18,10 @@ class URLGetCommand(BaseModel):
 class ShopGetCommand(BaseModel):
     id: int | None = None
     name: str = ""
+
+
+class CategoryGetCommand(BaseModel):
+    id: int | None = None
+    category_id: str = ""
+    name: str = ""
+    entity_type: str = ""

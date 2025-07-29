@@ -60,8 +60,8 @@ async def scrape_and_save(command: ScrapeCommand):
     except Exception as e:
         return False, f"download error, {e} , url:{command.url}"
     db_util.create_db_and_tables()
-    sparser = SofmapParser(html_str=html)
-    sparser.execute(url=command.url)
+    sparser = SofmapParser(html_str=html, url=command.url)
+    sparser.execute()
     results = sparser.get_results()
     pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
         results=results, remove_duplicate=True

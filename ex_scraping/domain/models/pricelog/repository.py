@@ -1,6 +1,13 @@
 from abc import ABC, abstractmethod
-from .pricelog import PriceLog, URL, Shop
-from .command import PriceLogGetCommand, ShopGetCommand, URLGetCommand
+
+
+from .pricelog import PriceLog, URL, Shop, Category
+from .command import (
+    PriceLogGetCommand,
+    ShopGetCommand,
+    URLGetCommand,
+    CategoryGetCommand,
+)
 
 
 class IPriceLogRepository(ABC):
@@ -34,4 +41,15 @@ class IShopRepository(ABC):
 
     @abstractmethod
     async def get(self, command: ShopGetCommand) -> Shop | None:
+        pass
+
+
+class ICategoryRepository(ABC):
+
+    @abstractmethod
+    async def save_all(self, cate_entries: list[Category]):
+        pass
+
+    @abstractmethod
+    async def get(self, command: CategoryGetCommand) -> list[Category]:
         pass

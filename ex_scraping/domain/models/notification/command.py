@@ -4,6 +4,7 @@ from pydantic import BaseModel
 class LogUpdateNotificationGetCommand(BaseModel):
     id: int | None = None
     target_entity_id: str = ""
+    target_entity_type: str = ""
     notification_type: str = ""
     range_type: str = ""
 

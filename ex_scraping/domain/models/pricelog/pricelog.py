@@ -37,3 +37,9 @@ class PriceLog(SQLBase, table=True):
     url: URL | None = Relationship(back_populates="logs")
     shop_id: int | None = Field(default=None, foreign_key="shop.id")
     shop: Shop | None = Relationship(back_populates="logs")
+
+
+class Category(SQLBase, table=True):
+    category_id: str = Field(index=True)
+    name: str = Field(index=True)
+    entity_type: str

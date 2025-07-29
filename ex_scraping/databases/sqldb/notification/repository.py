@@ -30,6 +30,7 @@ class LogUpdateNotificationRepository(m_repository.ILogUpdateNotificationReposit
             db_noti.notification_type = update_entry.notification_type
             db_noti.range_type = update_entry.range_type
             db_noti.error_msg = update_entry.error_msg
+            db_noti.meta = update_entry.meta
             db_noti.retry_count = update_entry.retry_count
             continue
 
@@ -48,6 +49,11 @@ class LogUpdateNotificationRepository(m_repository.ILogUpdateNotificationReposit
             stmt = stmt.where(
                 m_notif.LogUpdateNotification.target_entity_id
                 == command.target_entity_id
+            )
+        if command.target_entity_type:
+            stmt = stmt.where(
+                m_notif.LogUpdateNotification.target_entity_type
+                == command.target_entity_type
             )
         if command.range_type:
             stmt = stmt.where(

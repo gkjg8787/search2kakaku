@@ -18,15 +18,17 @@ from .model import (
 class SofmapParser:
     html_str: str
     results: ParseResults
+    url: str = ""
 
-    def __init__(self, html_str: str):
+    def __init__(self, html_str: str, url: str = ""):
         self.html_str = html_str
         self.results = ParseResults()
+        self.url = url
 
     def get_results(self) -> ParseResults:
         return self.results
 
-    def execute(self, url: str = ""):
+    def execute(self):
         soup = BeautifulSoup(self.html_str, "html.parser")
         ptn = r"#change_style_list li"
         elems = soup.select(ptn)
@@ -53,8 +55,8 @@ class SofmapParser:
                 self._get_stock_quantity(elem)
             )
             result.shops_with_stock = self._get_shops_with_stock(elem)
-            if url:
-                result.url = url
+            if self.url:
+                result.url = self.url
             results.results.append(result)
         self.results = results
 

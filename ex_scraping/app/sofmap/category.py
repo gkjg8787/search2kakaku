@@ -1,15 +1,19 @@
 import time
 
 import httpx
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sofmap.parser import CategoryParser
-from sofmap.repository import (
-    FileCategoryRepository,
-    FileAkibaCategoryRepository,
-    ICategoryRepository,
-)
+from sofmap.model import CategoryResult
+from domain.models.pricelog import repository as p_repo, pricelog as m_pricelog
+from databases.sqldb.pricelog.repository import CategoryRepository
 
-from .constants import SOFMAP_TOP_URL, A_SOFMAP_TOP_URL
+from .constants import (
+    SOFMAP_TOP_URL,
+    A_SOFMAP_TOP_URL,
+    SOFMAP_DB_ENTITY_TYPE,
+    A_SOFMAP_DB_ENTITY_TYPE,
+)
 
 
 def dl_sofmap_top(
@@ -29,18 +33,36 @@ def dl_sofmap_top(
             raise e
 
 
-def create_category_data():
-    def dl_and_create_category(url, repository_class: ICategoryRepository):
+def convert_categoryresult_to_categorydomain(
+    result: CategoryResult, entity_type: str
+) -> list[m_pricelog.Category]:
+    domain_list: list[m_pricelog.Category] = []
+    for gid, name in result.gid_to_name.items():
+        domain_list.append(
+            m_pricelog.Category(category_id=gid, name=name, entity_type=entity_type)
+        )
+    return domain_list
+
+
+async def create_category_data(ses: AsyncSession):
+    async def dl_and_create_category(
+        url, repository: p_repo.ICategoryRepository, entity_type: str
+    ):
         try:
             top_text = dl_sofmap_top(url=url)
             cp = CategoryParser(html_str=top_text)
             cp.execute()
-            repo: ICategoryRepository = repository_class()
-            repo.save(cate=cp.get_results())
+            category_list = convert_categoryresult_to_categorydomain(
+                result=cp.get_results(), entity_type=entity_type
+            )
+            await repository.save_all(cate_entries=category_list)
         except Exception:
             return
 
-    dl_and_create_category(url=SOFMAP_TOP_URL, repository_class=FileCategoryRepository)
-    dl_and_create_category(
-        url=A_SOFMAP_TOP_URL, repository_class=FileAkibaCategoryRepository
+    repository = CategoryRepository(ses=ses)
+    await dl_and_create_category(
+        url=SOFMAP_TOP_URL, repository=repository, entity_type=SOFMAP_DB_ENTITY_TYPE
+    )
+    await dl_and_create_category(
+        url=A_SOFMAP_TOP_URL, repository=repository, entity_type=A_SOFMAP_DB_ENTITY_TYPE
     )
