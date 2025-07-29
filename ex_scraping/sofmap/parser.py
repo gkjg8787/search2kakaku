@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 import re
 
 from bs4 import BeautifulSoup

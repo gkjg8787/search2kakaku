@@ -17,7 +17,7 @@ ENV LANGUAGE ja_JP:en
 ENV LC_ALL ja_JP.UTF-8
 
 WORKDIR /app
-RUN mkdir /app/db
+RUN mkdir /app/db && mkdir /app/log
 
 COPY .vimrc /root/
 COPY requirements.txt ./

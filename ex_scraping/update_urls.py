@@ -2,7 +2,11 @@ import sys
 import asyncio
 import argparse
 from urllib.parse import urlparse
+import uuid
 
+import structlog
+
+from common import logger_config
 from domain.models.notification import command as noti_cmd
 from domain.models.pricelog import command as p_cmd
 from databases.sqldb.pricelog import repository as p_repo
@@ -25,6 +29,10 @@ def is_a_sofmap(url: str):
 
 
 async def main(argv):
+    logger_config.configure_logger()
+    run_id = str(uuid.uuid4())
+    log = structlog.get_logger(__name__).bind(run_id=run_id, process_type="update_urls")
+
     argp = set_argparse(argv[1:])
     async for ses in db_util.get_async_session():
         urlnotirepo = n_repo.URLNotificationRepository(ses=ses)
@@ -32,7 +40,7 @@ async def main(argv):
             command=noti_cmd.URLNotificationGetCommand(is_active=True)
         )
         if not target_urlnotis:
-            print("No target urls")
+            log.error("No target urls")
             return
         urlrepo = p_repo.URLRepository(ses=ses)
         sofmapopts = read_config.get_sofmap_options()
@@ -42,6 +50,7 @@ async def main(argv):
                 command=p_cmd.URLGetCommand(id=urlnoti.url_id)
             )
             if not target_url:
+                log.warning("target_url not found", url_id=urlnoti.url_id)
                 continue
             command = web_scraper.ScrapeCommand(
                 url=target_url,
@@ -53,8 +62,9 @@ async def main(argv):
             )
             ok, msg = await web_scraper.scrape_and_save(command=command)
             if ok:
+                log.info("update and save ... ok", url=target_url)
                 continue
-            print(msg)
+            log.error("update and save ... ng", url=target_url, error_msg=msg)
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 import sys
 import argparse
 import asyncio
+import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
+import structlog
 
 from sofmap import parser
 from domain.models.pricelog import repository as m_repo, command as p_cmd
@@ -17,7 +19,7 @@ from app.sofmap import (
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sqldb.pricelog import repository as db_repo
 from databases.sqldb import util as db_util
-from common import read_config
+from common import read_config, logger_config
 
 
 def set_argparse(argv):
@@ -84,6 +86,11 @@ def set_argparse(argv):
         action="store_true",
         help="結果を標準出力",
     )
+    parser.add_argument(
+        "--without_registration",
+        action="store_true",
+        help="作成したURL含む、結果をデータベースに登録しない",
+    )
 
     return parser.parse_args(argv[1:])
 
@@ -117,12 +124,17 @@ async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
 
 
 async def main(argv):
+    logger_config.configure_logger()
+    run_id = str(uuid.uuid4())
+    log = structlog.get_logger(__name__).bind(
+        run_id=run_id, process_type="sofmap_search"
+    )
     if len(argv) == 1:
-        print("parameter error. param length zero")
+        log.info("parameter error. param length zero")
         return
     argp = set_argparse(argv)
     if not argp.search_query:
-        print("paramter error. search_query is None")
+        log.info("paramter error. search_query is None")
         return
     db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
@@ -132,7 +144,16 @@ async def main(argv):
             is_akiba=argp.akiba,
             category_name=argp.category,
         )
-        print(f"keyword : {argp.search_query}, gid : {gid}, is_akiba : {argp.akiba}")
+        log.info(
+            "get parameter",
+            search_keyword=argp.search_query,
+            gid=gid,
+            is_akiba=argp.akiba,
+            direct_search=argp.direct_search,
+            product_type=argp.condition,
+            display_count=argp.displaycount,
+            order_by=argp.orderby,
+        )
         search_url = urlgenerate.build_search_url(
             search_keyword=argp.search_query,
             is_akiba=argp.akiba,
@@ -142,7 +163,7 @@ async def main(argv):
             display_count=argp.displaycount,
             order_by=argp.orderby,
         )
-        print(f"generate url : {search_url}")
+        log.info("generate url", search_url=search_url)
         cookie_dict_list = cookie_util.create_cookies(
             is_akiba=argp.akiba, is_ucaa=argp.ucaa
         )
@@ -157,19 +178,23 @@ async def main(argv):
                 selenium_url=seleniumopt.remote_url,
             )
         except Exception as e:
-            print(f"download error {e}")
+            log.error(f"download error {e}", url=search_url)
             return
-        print(f"download end")
+        log.info("download end")
         sparser = parser.SofmapParser(html_str=html, url=search_url)
         sparser.execute()
         results = sparser.get_results()
         pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
             results=results, remove_duplicate=True
         )
-        await save_result(ses=ses, pricelog_list=pricelog_list)
-        print(f"save to database")
+        if not pricelog_list:
+            log.info("data is None")
+            return
+        if not argp.without_registration:
+            await save_result(ses=ses, pricelog_list=pricelog_list)
+            log.info("save to database")
         if argp.verbose:
-            print(pricelog_list)
+            log.info(pricelog_list)
 
 
 if __name__ == "__main__":

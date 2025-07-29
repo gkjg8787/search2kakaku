@@ -38,6 +38,10 @@ class DataBaseOptions(BaseModel):
     a_sync: SQLParams
 
 
+class LogOptions(BaseModel):
+    directory_path: str
+
+
 def to_lower_keys(obj):
     if isinstance(obj, dict):
         # 新しい辞書を構築し、各キーを小文字に変換
@@ -72,3 +76,8 @@ def get_api_sending_options():
 def get_databases():
     lower_key_dict = to_lower_keys(settings.DATABASES)
     return DataBaseOptions(**lower_key_dict)
+
+
+def get_log_options():
+    lower_key_dict = to_lower_keys(settings.LOG_OPTIONS)
+    return LogOptions(**lower_key_dict)

@@ -26,3 +26,4 @@ API_SENDING_OPTIONS = {
         "base_url": "http://localhost:8000/api/",
     }
 }
+LOG_OPTIONS = {"directory_path": f"{BASE_DIR}/log/"}

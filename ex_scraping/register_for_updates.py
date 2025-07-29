@@ -1,8 +1,11 @@
 import asyncio
 import sys
 import argparse
+import uuid
 
+import structlog
 
+from common import logger_config
 from databases.sqldb.pricelog import repository as p_repo
 from domain.models.pricelog import pricelog as m_pricelog
 from domain.models.notification import notification as m_noti
@@ -83,9 +86,15 @@ def create_result_message(result: UpdateNotificationResult) -> str:
 
 
 async def main(argv):
+    logger_config.configure_logger()
+    run_id = str(uuid.uuid4())
+    log = structlog.get_logger(__name__).bind(
+        run_id=run_id, process_type="register_for_updates"
+    )
+
     argp = set_argparse(argv[1:])
     if argp.remove and argp.new:
-        print("invalid option combination. remove and new.")
+        log.error("invalid option combination. remove and new.")
         return
     db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
@@ -97,37 +106,49 @@ async def main(argv):
                     if line.strip() and not line.strip().startswith("#")
                 ]
                 if not target_urls:
-                    print(
-                        f"エラー: 指定されたファイル '{argp.file_path}' に有効なURLが見つかりません。",
-                        file=sys.stderr,
+                    log.error(
+                        f"No valid URLs in the file",
+                        file_path=argp.file_path,
                     )
                     return
             if argp.add:
                 result = await register_file_urls(ses=ses, target_urls=target_urls)
-                print(create_result_message(result))
+                log.info(
+                    create_result_message(result),
+                    order_type="add",
+                    target="file",
+                    file_path=argp.file_path,
+                )
                 return
             if argp.remove:
                 result = await inactive_file_urls(ses=ses, target_urls=target_urls)
-                print(create_result_message(result))
+                log.info(
+                    create_result_message(result),
+                    order_type="remove",
+                    target="file",
+                    file_path=argp.file_path,
+                )
                 return
             return
         else:
             urlrepo = p_repo.URLRepository(ses=ses)
             target_db_urls = await urlrepo.get_all()
             if not target_db_urls:
-                print("not exist urls")
+                log.error("not exist urls in database")
                 return
             if argp.remove and argp.all:
                 result = await inactive_all_urls(ses=ses, target_urls=target_db_urls)
-                print(create_result_message(result))
+                log.info(
+                    create_result_message(result), order_type="remove", target="all"
+                )
                 return
             if argp.add and argp.all:
                 result = await register_all_urls(ses=ses, target_urls=target_db_urls)
-                print(create_result_message(result))
+                log.info(create_result_message(result), order_type="add", target="all")
                 return
             if argp.add and argp.new:
                 result = await register_new_urls(ses=ses, target_urls=target_db_urls)
-                print(create_result_message(result))
+                log.info(create_result_message(result), order_type="add", target="new")
                 return
 
 
