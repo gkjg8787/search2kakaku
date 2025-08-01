@@ -1,10 +1,34 @@
+import datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from domain.models.activitylog import (
     command as act_cmd,
     activitylog as m_actlog,
     enums as actlog_enums,
 )
 from databases.sqldb.activitylog import repository as a_repo
+
+
+def convert_datetime_to_str(value):
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return str(value)  # value.strftime("%Y-%m-%d %H:%M:%S.%f")
+    elif isinstance(value, dict):
+        return convert_datetime_to_str_in_dict(value)
+    elif isinstance(value, list):
+        converted_list = []
+        for v in value:
+            converted_list.append(convert_datetime_to_str(v))
+        return converted_list
+    else:
+        return value
+
+
+def convert_datetime_to_str_in_dict(targets: dict) -> dict:
+    converted = {}
+    for key, value in targets.items():
+        converted[key] = convert_datetime_to_str(value)
+    return converted
 
 
 class UpdateActivityLog:
@@ -30,7 +54,7 @@ class UpdateActivityLog:
             activity_type=activity_type,
             range_type=range_type,
             current_state=status,
-            meta=subinfo,
+            meta=convert_datetime_to_str_in_dict(subinfo),
         )
         await self.repository.save_all([activitylog])
         await self.session.refresh(activitylog)
@@ -63,9 +87,9 @@ class UpdateActivityLog:
         if next_status:
             db_actlog.current_state = next_status
         if new_subinfo is not None and isinstance(new_subinfo, dict):
-            db_actlog.meta = new_subinfo
+            db_actlog.meta = convert_datetime_to_str_in_dict(targets=new_subinfo)
         if add_subinfo and isinstance(add_subinfo, dict):
-            db_actlog.meta |= add_subinfo
+            db_actlog.meta |= convert_datetime_to_str_in_dict(targets=add_subinfo)
         if error_msg is not None:
             db_actlog.error_msg = error_msg
         if add_error_msg:

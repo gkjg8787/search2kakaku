@@ -73,7 +73,7 @@ async def main(argv):
 
     argp = set_argparse(argv[1:])
     if not argp.start_jst_date or not argp.start_utc_date:
-        start_utc_date = get_start_date(act_enum.RangeType.TODAY)
+        start_utc_date = None
     elif argp.start_jst_date:
         start_utc_date = argp.start_jst_date.astimezone(timezone.utc)
     elif argp.start_utc_date:

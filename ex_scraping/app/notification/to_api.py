@@ -126,8 +126,10 @@ async def get_new_start_date(upactivitylog: UpdateActivityLog):
         new_start_date = new_start_date.replace(tzinfo=timezone.utc)
         return new_start_date + timedelta(microseconds=1)
     if isinstance(new_start_date, datetime):
-        if not new_start_date.tzinfo:
+        if new_start_date.tzinfo:
             new_start_date = new_start_date.astimezone(tz=timezone.utc)
+        else:
+            new_start_date = new_start_date.replace(tzinfo=timezone.utc)
         return new_start_date + timedelta(microseconds=1)
     ValueError(
         f"new_start_date is not supported type:{type(new_start_date)}, value:{new_start_date}"
