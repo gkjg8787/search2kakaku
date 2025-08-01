@@ -92,7 +92,7 @@ def set_argparse(argv):
         help="作成したURL含む、結果をデータベースに登録しない",
     )
 
-    return parser.parse_args(argv[1:])
+    return parser.parse_args(argv)
 
 
 async def get_category_id(
@@ -132,7 +132,7 @@ async def main(argv):
     if len(argv) == 1:
         log.info("parameter error. param length zero")
         return
-    argp = set_argparse(argv)
+    argp = set_argparse(argv[1:])
     if not argp.search_query:
         log.info("paramter error. search_query is None")
         return
@@ -144,16 +144,7 @@ async def main(argv):
             is_akiba=argp.akiba,
             category_name=argp.category,
         )
-        log.info(
-            "get parameter",
-            search_keyword=argp.search_query,
-            gid=gid,
-            is_akiba=argp.akiba,
-            direct_search=argp.direct_search,
-            product_type=argp.condition,
-            display_count=argp.displaycount,
-            order_by=argp.orderby,
-        )
+        log.info("get parameter", gid=gid, **vars(argp))
         search_url = urlgenerate.build_search_url(
             search_keyword=argp.search_query,
             is_akiba=argp.akiba,
@@ -194,7 +185,7 @@ async def main(argv):
             await save_result(ses=ses, pricelog_list=pricelog_list)
             log.info("save to database")
         if argp.verbose:
-            log.info(pricelog_list)
+            log.info(pricelog_list, verbose=True)
 
 
 if __name__ == "__main__":

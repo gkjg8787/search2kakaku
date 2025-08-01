@@ -1,18 +1,6 @@
 from abc import ABC, abstractmethod
-from .notification import LogUpdateNotification, URLNotification
-from .command import LogUpdateNotificationGetCommand, URLNotificationGetCommand
-
-
-class ILogUpdateNotificationRepository(ABC):
-    @abstractmethod
-    async def save_all(self, update_entries: list[LogUpdateNotification]):
-        pass
-
-    @abstractmethod
-    async def get(
-        self, command: LogUpdateNotificationGetCommand
-    ) -> list[LogUpdateNotification]:
-        pass
+from .notification import URLNotification
+from .command import URLNotificationGetCommand
 
 
 class IURLNotificationRepository(ABC):
