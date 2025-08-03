@@ -11,12 +11,22 @@ from databases.sqldb.pricelog import repository as p_repo
 from databases.sqldb.notification import repository as n_repo
 from app.sofmap import web_scraper, constants as sofmap_contains
 from common import read_config
-from .update_activitylog import UpdateActivityLog
+from ex_scraping.app.activitylog.update import UpdateActivityLog
+from app.activitylog.util import get_activitylog_latest
 
 OK_WAIT_TIME = 2
 NG_WAIT_TIME = 4
 
-SCRAPING_AND_SAVE = "SCRAPING_AND_SAVE"
+ACTIVITY_TYPE = "scraping_and_save_target_urls"
+
+
+async def is_updating_urls(updateactlog: UpdateActivityLog):
+    db_actlog = await get_activitylog_latest(
+        upactivitylog=updateactlog, activity_type=ACTIVITY_TYPE
+    )
+    if not db_actlog:
+        return False
+    return True
 
 
 def is_a_sofmap(url: str):
@@ -30,7 +40,7 @@ async def scraping_and_save_target_urls(
     up_activitylog = UpdateActivityLog(ses=ses)
     db_activitylog = await up_activitylog.create(
         target_id=str(uuid.uuid4()),
-        activity_type=SCRAPING_AND_SAVE,
+        activity_type=ACTIVITY_TYPE,
         subinfo={"caller_type": caller_type},
     )
     activitylog_id = db_activitylog.id

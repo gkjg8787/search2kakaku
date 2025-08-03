@@ -7,7 +7,7 @@ from collections import deque
 from common import read_config
 
 
-def set_argparse(argv):
+def set_argparse():
     parser = argparse.ArgumentParser(description="対象のファイルのログを表示")
     parser.add_argument(
         "-f",
@@ -33,7 +33,7 @@ def set_argparse(argv):
     read_type_group.add_argument(
         "--tail", type=int, help="末尾から指定行の数だけ読み込む。"
     )
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
 class LineLog:
@@ -126,8 +126,8 @@ def read_file(
     return []
 
 
-def main(argv):
-    argp = set_argparse(argv[1:])
+def main():
+    argp = set_argparse()
     if not argp.filename:
         filename = "application.log"
     else:
@@ -161,4 +161,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()

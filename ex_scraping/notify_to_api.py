@@ -1,4 +1,3 @@
-import sys
 import asyncio
 import argparse
 from datetime import datetime, timezone, time
@@ -9,19 +8,19 @@ import structlog
 
 from common import logger_config
 from domain.models.notification import command as noti_cmd
-from domain.models.activitylog import enums as act_enum
 from domain.models.pricelog import command as p_cmd
+from domain.models.activitylog import activitylog
 from databases.sqldb.pricelog import repository as p_repo
 from databases.sqldb.notification import repository as n_repo
 from databases.sqldb import util as db_util
-from app.notification import to_api
+from app.notification import send_pricelog
 
 DATETIME_FORMAT = "%Y/%m/%d %H:%M:%S"
 JST = ZoneInfo("Asia/Tokyo")
 CALLER_TYPE = "user"
 
 
-def set_argparse(argv):
+def set_argparse():
     parser = argparse.ArgumentParser(
         description="ログをAPIへ転送します。対象ログの範囲の開始日時を指定しない場合、最近の通知履歴の更新時間+マイクロ秒を対象を開始時刻として利用します。"
     )
@@ -55,23 +54,17 @@ def set_argparse(argv):
         type=lambda d: datetime.strptime(d, DATETIME_FORMAT).replace(tzinfo=JST),
         help=f'通知するログデータ範囲の終了日時(JST): "yyyy/mm/dd HH:MM:SS"のフォーマットで指定',
     )
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
-def get_start_date(rangetype: act_enum.RangeType) -> datetime | None:
-    if rangetype == act_enum.RangeType.TODAY:
-        return datetime.combine(datetime.today(), time.min, tzinfo=timezone.utc)
-    return None
-
-
-async def main(argv):
+async def main():
     logger_config.configure_logger()
     run_id = str(uuid.uuid4())
     log = structlog.get_logger(__name__).bind(
         run_id=run_id, process_type="notify_to_api"
     )
 
-    argp = set_argparse(argv[1:])
+    argp = set_argparse()
     if not argp.start_jst_date or not argp.start_utc_date:
         start_utc_date = None
     elif argp.start_jst_date:
@@ -90,8 +83,9 @@ async def main(argv):
     else:
         end_utc_date = None
 
+    db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
-        await to_api.send_target_URLs_to_api(
+        await send_pricelog.send_target_URLs_to_api(
             ses=ses,
             start_utc_date=start_utc_date,
             end_utc_date=end_utc_date,
@@ -101,4 +95,4 @@ async def main(argv):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv))
+    asyncio.run(main())

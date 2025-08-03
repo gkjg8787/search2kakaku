@@ -10,27 +10,6 @@ from domain.models.activitylog import (
 from databases.sqldb.activitylog import repository as a_repo
 
 
-def convert_datetime_to_str(value):
-    if isinstance(value, (datetime.datetime, datetime.date)):
-        return str(value)  # value.strftime("%Y-%m-%d %H:%M:%S.%f")
-    elif isinstance(value, dict):
-        return convert_datetime_to_str_in_dict(value)
-    elif isinstance(value, list):
-        converted_list = []
-        for v in value:
-            converted_list.append(convert_datetime_to_str(v))
-        return converted_list
-    else:
-        return value
-
-
-def convert_datetime_to_str_in_dict(targets: dict) -> dict:
-    converted = {}
-    for key, value in targets.items():
-        converted[key] = convert_datetime_to_str(value)
-    return converted
-
-
 class UpdateActivityLog:
     session: AsyncSession
     repository: a_repo.ActivityLogRepository
@@ -44,7 +23,6 @@ class UpdateActivityLog:
         target_id: int,
         target_table: str = "None",
         activity_type: str = "",
-        range_type: str = actlog_enums.RangeType.NONE.name,
         status: str = actlog_enums.UpdateStatus.PENDING.name,
         subinfo: dict = {},
     ) -> m_actlog.ActivityLog | None:
@@ -52,7 +30,6 @@ class UpdateActivityLog:
             target_id=target_id,
             target_table=target_table,
             activity_type=activity_type,
-            range_type=range_type,
             current_state=status,
             meta=convert_datetime_to_str_in_dict(subinfo),
         )
@@ -72,7 +49,6 @@ class UpdateActivityLog:
     async def update(
         self,
         id: int,
-        range_type: str | None = None,
         next_status: str | None = None,
         new_subinfo: dict | None = None,
         add_subinfo: dict | None = None,
@@ -82,8 +58,6 @@ class UpdateActivityLog:
         db_actlog = await self.get(command=act_cmd.ActivityLogGetCommand(id=id))
         if not db_actlog:
             ValueError(f"{id} is not found in ActivityLog")
-        if range_type:
-            db_actlog.range_type = range_type
         if next_status:
             db_actlog.current_state = next_status
         if new_subinfo is not None and isinstance(new_subinfo, dict):
@@ -153,3 +127,24 @@ class UpdateActivityLog:
             add_subinfo=add_subinfo,
             error_msg=error_msg,
         )
+
+
+def convert_datetime_to_str(value):
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return str(value)  # value.strftime("%Y-%m-%d %H:%M:%S.%f")
+    elif isinstance(value, dict):
+        return convert_datetime_to_str_in_dict(value)
+    elif isinstance(value, list):
+        converted_list = []
+        for v in value:
+            converted_list.append(convert_datetime_to_str(v))
+        return converted_list
+    else:
+        return value
+
+
+def convert_datetime_to_str_in_dict(targets: dict) -> dict:
+    converted = {}
+    for key, value in targets.items():
+        converted[key] = convert_datetime_to_str(value)
+    return converted

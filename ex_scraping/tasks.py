@@ -5,7 +5,7 @@ from celery.schedules import crontab
 
 from databases.sqldb import util as db_util
 from app.update import scraping_urls
-from app.notification import to_api
+from app.notification import send_pricelog
 
 
 app = Celery(
@@ -39,7 +39,7 @@ async def a_update_urls_and_notify_to_api():
         await scraping_urls.scraping_and_save_target_urls(
             ses=ses, caller_type=CALLER_TYPE
         )
-        await to_api.send_target_URLs_to_api(
+        await send_pricelog.send_target_URLs_to_api(
             ses=ses, start_utc_date=None, end_utc_date=None, caller_type=CALLER_TYPE
         )
 

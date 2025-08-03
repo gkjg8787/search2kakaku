@@ -18,8 +18,8 @@ def main(argv, output_parse_filename=OUTPUT_PARSE_FNAME):
     with open(fname, "r") as f:
         html = f.read()
 
-    parser = SofmapParser(html)
-    parser.execute(url=url)
+    parser = SofmapParser(html, url=url)
+    parser.execute()
     with open(output_parse_filename, "w") as f:
         f.write(json.dumps(parser.get_results().model_dump_json(), ensure_ascii=False))
 

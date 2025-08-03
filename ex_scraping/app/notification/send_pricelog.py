@@ -9,12 +9,12 @@ from domain.models.pricelog import pricelog as m_pricelog, command as p_cmd
 from databases.sqldb.pricelog import repository as p_repo
 from domain.models.notification import command as noti_cmd
 from databases.sqldb.notification import repository as n_repo
-from domain.models.activitylog import command as act_cmd, enums as act_enums
-from common.read_config import get_api_sending_options
-from .constants import API_OPTIONS
 from .enums import APIURLName
-from .models import ParseInfosUpdate, ParseInfo, PriceUpdateResponse, APIPathOption
-from app.update.update_activitylog import UpdateActivityLog
+from .models import ParseInfosUpdate, ParseInfo, PriceUpdateResponse
+from app.activitylog.update import UpdateActivityLog
+from app.activitylog.util import get_activitylog_latest
+from .util import create_api_url
+from .factory import APIPathOptionFactory
 
 ACTIVITY_TYPE = "send_target_URLs_to_api"
 
@@ -47,17 +47,9 @@ async def convert_pricelog_to_parseinfo(
     return parseinfos
 
 
-def get_api_base_url():
-    apisendopt = get_api_sending_options()
-    return apisendopt.urls.base_url
-
-
 async def send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog]):
-    name = APIURLName.UPDATE_PRICE.value
-    apiopt = APIPathOption(name=name, **API_OPTIONS[name])
-    base_url = get_api_base_url()
-    api_url = os.path.join(base_url, apiopt.path)
-
+    apiopt = APIPathOptionFactory().create(apiurlname=APIURLName.UPDATE_PRICE)
+    api_url = create_api_url(apiopt=apiopt)
     try:
         parseinfos = await convert_pricelog_to_parseinfo(
             ses=ses, pricelog_list=pricelog_list
@@ -93,16 +85,6 @@ async def send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
         return False, f"invalid type response, type:{type(res_json)}, {res_json}"
     priceupres = PriceUpdateResponse(**res_json)
     return priceupres.ok, priceupres.error_msg
-
-
-async def get_activitylog_latest(upactivitylog: UpdateActivityLog, activity_type: str):
-    db_actlogs = await upactivitylog.get_all(
-        command=act_cmd.ActivityLogGetCommand(activity_type=activity_type)
-    )
-    if not db_actlogs:
-        return None
-    lastest_actlog = max(db_actlogs, key=lambda log: log.updated_at)
-    return lastest_actlog
 
 
 async def get_new_start_date(upactivitylog: UpdateActivityLog):
@@ -175,7 +157,6 @@ async def send_target_URLs_to_api(
             target_id=url_id,
             target_table="URL",
             activity_type=ACTIVITY_TYPE,
-            range_type=act_enums.RangeType.TODAY.name,
             subinfo=init_subinfo,
         )
         activitylog_id = db_activitylog.id

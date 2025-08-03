@@ -1,5 +1,3 @@
-from typing import List
-
 from sqlmodel import Field, Relationship
 
 from domain.models.base_model import SQLBase
@@ -10,13 +8,13 @@ from common import constants
 class URL(SQLBase, table=True):
     url: str = Field(default="", index=True)
 
-    logs: List["PriceLog"] = Relationship(back_populates="url")
+    logs: list["PriceLog"] = Relationship(back_populates="url")
 
 
 class Shop(SQLBase, table=True):
     name: str = Field(index=True)
 
-    logs: List["PriceLog"] = Relationship(back_populates="shop")
+    logs: list["PriceLog"] = Relationship(back_populates="shop")
 
 
 class PriceLog(SQLBase, table=True):

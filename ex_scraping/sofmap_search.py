@@ -1,4 +1,3 @@
-import sys
 import argparse
 import asyncio
 import uuid
@@ -22,7 +21,7 @@ from databases.sqldb import util as db_util
 from common import read_config, logger_config
 
 
-def set_argparse(argv):
+def set_argparse():
     parser = argparse.ArgumentParser(
         description="sofmapを検索し結果をデータベースに保存するスクリプト。",
         formatter_class=argparse.RawTextHelpFormatter,  # ヘルプメッセージの整形を保持
@@ -58,7 +57,7 @@ def set_argparse(argv):
         "-ds",
         "--direct_search",
         action="store_true",
-        help="検索対象のサイトをショートカットします。",
+        help="検索をメインサイトではなくメインサイトから呼び出しているデータ取得URLへ変更します。パースに問題が起きるかも？",
     )
     parser.add_argument(
         "-dc",
@@ -92,7 +91,7 @@ def set_argparse(argv):
         help="作成したURL含む、結果をデータベースに登録しない",
     )
 
-    return parser.parse_args(argv)
+    return parser.parse_args()
 
 
 async def get_category_id(
@@ -123,16 +122,14 @@ async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
     await pricelogrepo.save_all(pricelog_entries=pricelog_list)
 
 
-async def main(argv):
+async def main():
     logger_config.configure_logger()
     run_id = str(uuid.uuid4())
     log = structlog.get_logger(__name__).bind(
         run_id=run_id, process_type="sofmap_search"
     )
-    if len(argv) == 1:
-        log.info("parameter error. param length zero")
-        return
-    argp = set_argparse(argv[1:])
+
+    argp = set_argparse()
     if not argp.search_query:
         log.info("paramter error. search_query is None")
         return
@@ -189,4 +186,4 @@ async def main(argv):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(sys.argv))
+    asyncio.run(main())

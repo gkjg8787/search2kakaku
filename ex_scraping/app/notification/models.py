@@ -35,3 +35,55 @@ class ParseInfosUpdate(ParseInfos):
 class PriceUpdateResponse(BaseModel):
     ok: bool
     error_msg: str
+
+
+class Item(BaseModel):
+    name: str
+
+
+class ItemCreate(Item):
+    urls: list[str] = Field(..., min_length=1)
+
+
+class DBItem(Item):
+    item_id: int | None
+
+
+class ItemCreateResponse(DBItem):
+    pass
+
+
+class URLActive(BaseModel):
+    url: str
+    is_active: bool = False
+
+
+class ItemToURL(BaseModel):
+    item_id: int
+    url_actives: list[URLActive] = Field(default_factory=list)
+
+
+class ItemsURLCreate(ItemToURL):
+    pass
+
+
+class DBURLActive(URLActive):
+    url_id: int
+
+
+class DBItemToURL(BaseModel):
+    item_id: int
+    url_actives: list[DBURLActive] = Field(default_factory=list)
+
+
+class ItemsURLCreateResponse(DBItemToURL):
+    pass
+
+
+class DBURLtoItem(BaseModel):
+    url_active: DBURLActive
+    items: list[DBItem] = Field(default_factory=list)
+
+
+class URLtoItemGetResponse(DBURLtoItem):
+    pass

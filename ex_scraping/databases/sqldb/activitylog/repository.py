@@ -31,7 +31,6 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             db_actlog.target_id = log_entry.target_id
             db_actlog.target_table = log_entry.target_table
             db_actlog.activity_type = log_entry.activity_type
-            db_actlog.range_type = log_entry.range_type
             db_actlog.current_state = log_entry.current_state
             db_actlog.meta = log_entry.meta
             db_actlog.error_msg = log_entry.error_msg
@@ -56,8 +55,6 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             stmt = stmt.where(
                 m_actlog.ActivityLog.activity_type == command.activity_type
             )
-        if command.range_type:
-            stmt = stmt.where(m_actlog.ActivityLog.range_type == command.range_type)
         if command.current_state:
             stmt = stmt.where(
                 m_actlog.ActivityLog.current_state == command.current_state
