@@ -7,7 +7,7 @@
 ## 対応サイト
 
 - sofmap
-  - 検索結果(https://www.sofmap.com/search_result.aspx)に対応。個別ページ(https://www.sofmap.com/product_detail.aspx)には非対応。akiba sofmap(https://a.sofmap.com/)も同様。
+  - 検索結果`https://www.sofmap.com/search_result.aspx`に対応。個別ページ`https://www.sofmap.com/product_detail.aspx`には非対応。akiba sofmap`https://a.sofmap.com/`も同様。
 
 ## 使い方
 
