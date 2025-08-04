@@ -19,7 +19,7 @@
 
 ## 使い方
 
-- 基本は`ex_scraping`コンテナに入ってコマンドで操作します。<br>`docker compose exec -it ex_scraping bash`
+- 基本は`ex_scraping`コンテナに入ってコマンドで操作する。<br>`docker compose exec -it ex_scraping bash`
 
 - 検索と価格情報の登録
   - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
@@ -54,9 +54,9 @@
     - 対象の API 側の docs から直接操作して登録する方法とコマンドを使用する方法がある。ここではコマンドのみ説明。
     - 以下を使用して kakakuscraping-fastapi に新規アイテムを追加する。<br>`python send_to_api.py create_item --name "item name" --url "url1" "url2"`
     - 既存アイテムに URL を追加する<br>`python send_to_api.py add_url --item_id [number] --url "url1"`
-- celery beat を使用するにはタスクを変更する必要がある。
+- celery beat で通知を定期実行するにはタスクを変更する必要がある。
   - tasks.py のコメントアウトされている`"update-and-notify-every-day"`を有効にし、重複する`"update-every-day"`をコメントアウトする。
 
 ### その他
 
-- コマンドのログを表示。価格情報のログ(pricelog)は DB を直接見て下さい。<br>`python view_log.py`
+- コマンドログを表示。<br>`python view_log.py`
