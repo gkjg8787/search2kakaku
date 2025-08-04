@@ -9,7 +9,17 @@
 - sofmap
   - 検索結果`https://www.sofmap.com/search_result.aspx`に対応。個別ページ`https://www.sofmap.com/product_detail.aspx`には非対応。akiba sofmap`https://a.sofmap.com/`も同様。
 
+## 前提
+
+- docker 導入済み
+
+## 起動
+
+- `docker compose up --build -d`
+
 ## 使い方
+
+- 基本は`ex_scraping`コンテナに入ってコマンドで操作します。<br>`docker compose exec -it ex_scraping bash`
 
 - 検索と価格情報の登録
   - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
