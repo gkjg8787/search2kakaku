@@ -36,6 +36,7 @@
     - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
     - 全て外す<br>`python register_for_updates.py remove --all`
 - アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
+  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/external_scraping#kakakuscraping-fastapi への通知)を参照
 - 設定した kakakuscraping の API へログデータを送信<br>`python send_to_api.py send_log`
 - ※詳細オプションは `--help` を参照
 
@@ -49,7 +50,7 @@
 
 - 使用するには以下の設定が必要。
   - ex_scraping/settings.py の送信先の API の URL 設定を書き換える。
-  - kakakuscraping-fastapi 側の API も有効にする。
+  - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)側の API も有効にする。
   - kakakuscraping-fastapi のアイテムにアップデート対象の URL を登録する必要がある。
     - 対象の API 側の docs から直接操作して登録する方法とコマンドを使用する方法がある。ここではコマンドのみ説明。
     - 以下を使用して kakakuscraping-fastapi に新規アイテムを追加する。<br>`python send_to_api.py create_item --name "item name" --url "url1" "url2"`
