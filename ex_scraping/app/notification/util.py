@@ -1,7 +1,5 @@
 import os
 from common.read_config import get_api_sending_options
-from .constants import API_OPTIONS
-from .enums import APIURLName
 from .models import APIPathOption
 
 

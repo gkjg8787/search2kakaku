@@ -51,13 +51,13 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             stmt = stmt.where(m_actlog.ActivityLog.target_id == command.target_id)
         if command.target_table:
             stmt = stmt.where(m_actlog.ActivityLog.target_table == command.target_table)
-        if command.activity_type:
+        if command.activity_types:
             stmt = stmt.where(
-                m_actlog.ActivityLog.activity_type == command.activity_type
+                m_actlog.ActivityLog.activity_type.in_(command.activity_types)
             )
-        if command.current_state:
+        if command.current_states:
             stmt = stmt.where(
-                m_actlog.ActivityLog.current_state == command.current_state
+                m_actlog.ActivityLog.current_state.in_(command.current_states)
             )
         if command.is_error:
             stmt = stmt.where(func.length(m_actlog.ActivityLog.error_msg) >= 1)

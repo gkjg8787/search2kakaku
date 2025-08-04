@@ -11,21 +11,23 @@
 
 ## 使い方
 
-- `python sofmap_search.py "keyword"` で情報取得 + URL、ログデータベース登録
-- `python register_for_updates.py add --new` でアップデート対象に登録
+- 検索と価格情報の登録
+  - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
+  - この時点ではアップデート対象にはならない。
+- アップデート対象情報の確認
+  - `python register_for_updates.py view` で URL のアップデート対象かどうかを確認可。is_active=True でアップデート対象
+- アップデート対象の登録
+  - アップデート対象に新規登録<br>`python register_for_updates.py add --new`
   - 検索を挟まず直接 URL をアップデート対象に登録
     - 登録したい URL 一覧を一行一 URL のファイルを用意する。例 urls.txt
-    - `python register_for_updates.py add -f urls.txt` で URL、アップデート対象として登録
+    - ファイルに書かれた URL を登録<br>`python register_for_updates.py add -f urls.txt`
   - アップデート対象から URL を外す
     - 外したい URL 一覧を一行一 URL のファイルを用意する。 例 urls.txt
-    - `python register_for_updates.py remove -f urls.txt` でアップデート対象から除外
-    - 全て外すなら `python register_for_updates.py remove --all`
-  - アップデート対象情報の確認
-    - `python register_for_updates.py view` で URL のアップデート対象かどうかを確認可能
-      - is_active=True でアップデート対象
-- `python update_urls.py` でアップデート対象の URL から情報を取得 → データベース登録
-- `python notifi_to_api.py` で 設定した kakakuscraping の API へログデータを送信
-- ※細かいオプションは `--help` を参照
+    - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
+    - 全て外す<br>`python register_for_updates.py remove --all`
+- アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
+- 設定した kakakuscraping の API へログデータを送信<br>`python send_to_api.py send_log`
+- ※詳細オプションは `--help` を参照
 
 ### celery beat による自動アップデート
 
@@ -40,12 +42,11 @@
   - kakakuscraping-fastapi 側の API も有効にする。
   - kakakuscraping-fastapi のアイテムにアップデート対象の URL を登録する必要がある。
     - 対象の API 側の docs から直接操作して登録する方法とコマンドを使用する方法がある。ここではコマンドのみ説明。
-    - `python create_item_url_via_api.py` を使用して kakakuscraping-fastapi に新規アイテムを追加 または既存のアイテムに URL を追加する。
-      - オプション `--new_item "item name" --url "url1" "url2"` で新規アイテムとそのアイテムに URL 追加。
-      - オプション `--item_id [number] --url "url1" "url2"` で登録済みアイテムに URL を追加。
+    - 以下を使用して kakakuscraping-fastapi に新規アイテムを追加する。<br>`python send_to_api.py create_item --name "item name" --url "url1" "url2"`
+    - 既存アイテムに URL を追加する<br>`python send_to_api.py add_url --item_id [number] --url "url1"`
 - celery beat を使用するにはタスクを変更する必要がある。
   - tasks.py のコメントアウトされている`"update-and-notify-every-day"`を有効にし、重複する`"update-every-day"`をコメントアウトする。
 
 ### その他
 
-- `python view_log.py`でコマンドのログを表示。
+- コマンドのログを表示。価格情報のログ(pricelog)は DB を直接見て下さい。<br>`python view_log.py`

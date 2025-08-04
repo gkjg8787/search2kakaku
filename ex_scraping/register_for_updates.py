@@ -191,7 +191,7 @@ def create_view_result_message(result : list[view_urls.ViewURLActive]) -> str:
         new_result :list = []
         for r in result:
             new_result.append(r.model_dump())
-            return str(new_result)
+        return str(new_result)
     return "no results"
 
 async def start_view_command(ses, argp, log):

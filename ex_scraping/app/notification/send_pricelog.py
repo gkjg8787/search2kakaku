@@ -12,11 +12,13 @@ from databases.sqldb.notification import repository as n_repo
 from .enums import APIURLName
 from .models import ParseInfosUpdate, ParseInfo, PriceUpdateResponse
 from app.activitylog.update import UpdateActivityLog
-from app.activitylog.util import get_activitylog_latest
+from app.activitylog.util import (
+    get_activitylog_latest,
+    is_updating_urls_or_sending_to_api,
+)
 from .util import create_api_url
 from .factory import APIPathOptionFactory
-
-ACTIVITY_TYPE = "send_target_URLs_to_api"
+from . import constants as nofi_const
 
 
 async def convert_pricelog_to_parseinfo(
@@ -98,7 +100,7 @@ async def get_new_start_date(upactivitylog: UpdateActivityLog):
         ValueError: The database value type is not supported.
     """
     latest_actlog = await get_activitylog_latest(
-        upactivitylog=upactivitylog, activity_type=ACTIVITY_TYPE
+        upactivitylog=upactivitylog, activity_types=[nofi_const.SEND_LOG_ACTIVITY_TYPE]
     )
     if not latest_actlog:
         return None
@@ -126,6 +128,12 @@ async def send_target_URLs_to_api(
     caller_type: str | None = None,
 ):
     upactlog = UpdateActivityLog(ses=ses)
+    if await is_updating_urls_or_sending_to_api(updateactlog=upactlog):
+        msg = "cancelled due to updating urls or sending to api."
+        if log:
+            log.warning(msg)
+        return
+
     init_subinfo = {
         "caller_type": caller_type,
         "start_utc_date": start_utc_date,
@@ -137,7 +145,9 @@ async def send_target_URLs_to_api(
             init_subinfo["new_start_utc_date"] = new_start_date
             start_utc_date = new_start_date
     db_taskactlog = await upactlog.create(
-        target_id=str(uuid.uuid4()), activity_type=ACTIVITY_TYPE, subinfo=init_subinfo
+        target_id=str(uuid.uuid4()),
+        activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
+        subinfo=init_subinfo,
     )
     taskactlog_id = db_taskactlog.id
     await upactlog.in_progress(id=taskactlog_id)
@@ -156,7 +166,7 @@ async def send_target_URLs_to_api(
         db_activitylog = await upactlog.create(
             target_id=url_id,
             target_table="URL",
-            activity_type=ACTIVITY_TYPE,
+            activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
             subinfo=init_subinfo,
         )
         activitylog_id = db_activitylog.id

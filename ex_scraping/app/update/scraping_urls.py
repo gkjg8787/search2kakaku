@@ -12,21 +12,8 @@ from databases.sqldb.notification import repository as n_repo
 from app.sofmap import web_scraper, constants as sofmap_contains
 from common import read_config
 from ex_scraping.app.activitylog.update import UpdateActivityLog
-from app.activitylog.util import get_activitylog_latest
-
-OK_WAIT_TIME = 2
-NG_WAIT_TIME = 4
-
-ACTIVITY_TYPE = "scraping_and_save_target_urls"
-
-
-async def is_updating_urls(updateactlog: UpdateActivityLog):
-    db_actlog = await get_activitylog_latest(
-        upactivitylog=updateactlog, activity_type=ACTIVITY_TYPE
-    )
-    if not db_actlog:
-        return False
-    return True
+from app.activitylog.util import is_updating_urls_or_sending_to_api
+from . import constants as update_const
 
 
 def is_a_sofmap(url: str):
@@ -38,9 +25,15 @@ async def scraping_and_save_target_urls(
     ses: AsyncSession, log=None, caller_type: str = None
 ):
     up_activitylog = UpdateActivityLog(ses=ses)
+    if await is_updating_urls_or_sending_to_api(updateactlog=up_activitylog):
+        msg = "cancelled due to updating urls or sending to api."
+        if log:
+            log.warning(msg)
+        return
+
     db_activitylog = await up_activitylog.create(
         target_id=str(uuid.uuid4()),
-        activity_type=ACTIVITY_TYPE,
+        activity_type=update_const.SCRAPING_URL_ACTIVITY_TYPE,
         subinfo={"caller_type": caller_type},
     )
     activitylog_id = db_activitylog.id
@@ -84,24 +77,27 @@ async def scraping_and_save_target_urls(
             target_results[target_url.id] = {}
             if log:
                 log.info("update and save ... ok", url=target_url.url)
-            await asyncio.sleep(OK_WAIT_TIME)
+            await asyncio.sleep(update_const.OK_WAIT_TIME)
             continue
         target_results[target_url.id] = {"error": f"{msg}"}
         err_msgs.append("{" + f"{target_url.id}:{msg}" + "}")
         err_ids.append(target_url.id)
         if log:
             log.error("update and save ... ng", url=target_url.url, error_msg=msg)
-        await asyncio.sleep(NG_WAIT_TIME)
+        await asyncio.sleep(update_const.NG_WAIT_TIME)
         continue
 
     add_subinfo = {"target_results": target_results}
     if not err_msgs:
         await up_activitylog.completed(id=activitylog_id, add_subinfo=add_subinfo)
+        return
     elif len(err_ids) == len(target_url_ids):
         await up_activitylog.failed(
             id=activitylog_id, error_msg=",".join(err_msgs), add_subinfo=add_subinfo
         )
+        return
     else:
         await up_activitylog.completed_with_error(
             id=activitylog_id, error_msg=",".join(err_msgs), add_subinfo=add_subinfo
         )
+        return

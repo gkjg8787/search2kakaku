@@ -5,3 +5,4 @@ API_OPTIONS = {
     "get_items_by_url": {"path": "urls/items/", "method": "get"},
     "update_price": {"path": "price/", "method": "patch"},
 }
+SEND_LOG_ACTIVITY_TYPE = "send_target_URLs_to_api"
