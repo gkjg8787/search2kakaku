@@ -36,7 +36,7 @@
     - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
     - 全て外す<br>`python register_for_updates.py remove --all`
 - アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
-  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/external_scraping#kakakuscraping-fastapi への通知)を参照
+  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/external_scraping#kakakuscraping-fastapi-への通知)を参照
 - 設定した kakakuscraping の API へログデータを送信<br>`python send_to_api.py send_log`
 - ※詳細オプションは `--help` を参照
 
