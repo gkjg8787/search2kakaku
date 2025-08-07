@@ -11,6 +11,7 @@ class ActivityLog(SQLBase, table=True):
     target_table: str
     activity_type: str = Field(index=True)
     current_state: str = Field(default=enums.OrderStatus.PENDING.name, index=True)
+    caller_type: str
     meta: dict = Field(
         default_factory=dict, sa_column=Column(MutableDict.as_mutable(JSON))
     )

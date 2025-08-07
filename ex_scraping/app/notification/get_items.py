@@ -45,11 +45,13 @@ async def get_items_by_url_with_api(
 ):
     upactlog = UpdateActivityLog(ses=ses)
     init_subinfo = {
-        "caller_type": caller_type,
         "urls": urls,
     }
     db_taskactlog = await upactlog.create(
-        target_id=str(uuid.uuid4()), activity_type=ACTIVITY_TYPE, subinfo=init_subinfo
+        target_id=str(uuid.uuid4()),
+        activity_type=ACTIVITY_TYPE,
+        caller_type=caller_type,
+        subinfo=init_subinfo,
     )
     taskactlog_id = db_taskactlog.id
     await upactlog.in_progress(id=taskactlog_id)

@@ -11,7 +11,7 @@ from databases.sqldb.pricelog import repository as p_repo
 from databases.sqldb.notification import repository as n_repo
 from app.sofmap import web_scraper, constants as sofmap_contains
 from common import read_config
-from ex_scraping.app.activitylog.update import UpdateActivityLog
+from app.activitylog.update import UpdateActivityLog
 from app.activitylog.util import is_updating_urls_or_sending_to_api
 from . import constants as update_const
 
@@ -34,7 +34,7 @@ async def scraping_and_save_target_urls(
     db_activitylog = await up_activitylog.create(
         target_id=str(uuid.uuid4()),
         activity_type=update_const.SCRAPING_URL_ACTIVITY_TYPE,
-        subinfo={"caller_type": caller_type},
+        caller_type=caller_type,
     )
     activitylog_id = db_activitylog.id
     await up_activitylog.in_progress(id=activitylog_id)
@@ -49,7 +49,7 @@ async def scraping_and_save_target_urls(
         if log:
             log.warning(msg)
         return
-    target_url_ids = [urlnoti.id for urlnoti in target_urlnotis]
+    target_url_ids = [urlnoti.url_id for urlnoti in target_urlnotis]
     urlrepo = p_repo.URLRepository(ses=ses)
     sofmapopts = read_config.get_sofmap_options()
     seleniumopts = read_config.get_selenium_options()

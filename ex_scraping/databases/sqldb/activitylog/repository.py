@@ -32,6 +32,7 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             db_actlog.target_table = log_entry.target_table
             db_actlog.activity_type = log_entry.activity_type
             db_actlog.current_state = log_entry.current_state
+            db_actlog.caller_type = log_entry.caller_type
             db_actlog.meta = log_entry.meta
             db_actlog.error_msg = log_entry.error_msg
             continue
@@ -59,6 +60,8 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             stmt = stmt.where(
                 m_actlog.ActivityLog.current_state.in_(command.current_states)
             )
+        if command.caller_type:
+            stmt = stmt.where(m_actlog.ActivityLog.caller_type == command.caller_type)
         if command.is_error:
             stmt = stmt.where(func.length(m_actlog.ActivityLog.error_msg) >= 1)
         if command.updated_at_start:

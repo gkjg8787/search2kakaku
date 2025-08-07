@@ -16,10 +16,16 @@ app.conf.beat_schedule = {
     # "update-and-notify-every-day": {
     #    "task": "tasks.update_urls_and_notify_to_api",
     #    "schedule": crontab(hour="14"),
+    #    'options': {
+    #        'expires': 10,  # 有効期限を秒で指定
+    #    },
     # },
     "update-every-day": {
         "task": "tasks.update_urls",
         "schedule": crontab(hour="14"),
+        "options": {
+            "expires": 10,
+        },
     }
 }
 app.conf.timezone = "Asia/Tokyo"  # タイムゾーンの設定

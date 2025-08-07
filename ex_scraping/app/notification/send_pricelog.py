@@ -135,7 +135,6 @@ async def send_target_URLs_to_api(
         return
 
     init_subinfo = {
-        "caller_type": caller_type,
         "start_utc_date": start_utc_date,
         "end_utc_date": end_utc_date,
     }
@@ -147,6 +146,7 @@ async def send_target_URLs_to_api(
     db_taskactlog = await upactlog.create(
         target_id=str(uuid.uuid4()),
         activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
+        caller_type=caller_type,
         subinfo=init_subinfo,
     )
     taskactlog_id = db_taskactlog.id
@@ -167,6 +167,7 @@ async def send_target_URLs_to_api(
             target_id=url_id,
             target_table="URL",
             activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
+            caller_type=caller_type,
             subinfo=init_subinfo,
         )
         activitylog_id = db_activitylog.id

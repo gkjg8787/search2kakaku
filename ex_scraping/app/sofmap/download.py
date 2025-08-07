@@ -11,7 +11,7 @@ from .constants import PAGE_LOAD_TIMEOUT, TAG_WAIT_TIMEOUT
 
 def _set_cookies(url: str, driver, cookie_dict_list: list[dict]):
     parsed_url = urlparse(url)
-    base_url = parsed_url._replace(path="", params="", query="", fragment="")
+    base_url = parsed_url._replace(path="", params="", query="", fragment="").geturl()
     driver.get(base_url)
     for cookie_dict in cookie_dict_list:
         driver.add_cookie(cookie_dict)

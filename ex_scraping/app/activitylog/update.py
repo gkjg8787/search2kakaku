@@ -1,4 +1,5 @@
 import datetime
+import copy
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,7 @@ class UpdateActivityLog:
         target_table: str = "None",
         activity_type: str = "",
         status: str = actlog_enums.UpdateStatus.PENDING.name,
+        caller_type: str = "",
         subinfo: dict = {},
     ) -> m_actlog.ActivityLog | None:
         activitylog = m_actlog.ActivityLog(
@@ -31,6 +33,7 @@ class UpdateActivityLog:
             target_table=target_table,
             activity_type=activity_type,
             current_state=status,
+            caller_type=caller_type,
             meta=convert_datetime_to_str_in_dict(subinfo),
         )
         await self.repository.save_all([activitylog])
@@ -63,7 +66,9 @@ class UpdateActivityLog:
         if new_subinfo is not None and isinstance(new_subinfo, dict):
             db_actlog.meta = convert_datetime_to_str_in_dict(targets=new_subinfo)
         if add_subinfo and isinstance(add_subinfo, dict):
-            db_actlog.meta |= convert_datetime_to_str_in_dict(targets=add_subinfo)
+            db_actlog.meta = copy.deepcopy(
+                db_actlog.meta
+            ) | convert_datetime_to_str_in_dict(targets=add_subinfo)
         if error_msg is not None:
             db_actlog.error_msg = error_msg
         if add_error_msg:

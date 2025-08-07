@@ -43,8 +43,9 @@
 ### celery beat による自動アップデート
 
 - celery beat を使用すると定期的にアップデートすることができる。対象のファイルは tasks.py
-- サンプルとして compose_sample に celery beat を動かす compose.yaml を置いた。このディレクトリ配下を README.md があるフォルダにコピーして使用する。
+- サンプルとして compose_sample ディレクトリ に celery beat を動かす compose.yaml を置いた。このディレクトリ配下を README.md があるフォルダにコピーして使用する。
 - tasks.py の` "schedule": crontab(hour="14"),`を変更することで動作時間を変更可能。
+- compose_sample 配下の compose.yaml を使用する際は一度 ex_scraping だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>cp tool/db_create.py . <br>python db_create.py<br>DB 作成後、他のコンテナを起動する。
 
 ### kakakuscraping-fastapi への通知
 

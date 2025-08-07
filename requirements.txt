@@ -6,3 +6,4 @@ selenium
 aiosqlite
 celery[redis]
 structlog
+flower
