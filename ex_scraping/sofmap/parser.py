@@ -14,7 +14,7 @@ from .model import (
 )
 
 
-class SofmapParser:
+class SearchResultParser:
     html_str: str
     results: ParseResults
     url: str = ""

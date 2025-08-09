@@ -205,7 +205,7 @@ async def sofmap_command(argp, log):
             log.error(f"download error {e}", url=search_url)
             return
         log.info("download end")
-        sparser = parser.SofmapParser(html_str=html, url=search_url)
+        sparser = parser.SearchResultParser(html_str=html, url=search_url)
         sparser.execute()
         results = sparser.get_results()
         pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(

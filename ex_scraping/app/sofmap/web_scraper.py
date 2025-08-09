@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sqldb import util as db_util
 from databases.sqldb.pricelog import repository as db_repo
-from sofmap.parser import SofmapParser
+from sofmap.parser import SearchResultParser
 from . import cookie_util, download, db_convert
 from .constants import A_SOFMAP_NETLOC
 
@@ -60,7 +60,7 @@ async def scrape_and_save(command: ScrapeCommand):
     except Exception as e:
         return False, f"download error, {e} , url:{command.url}"
     db_util.create_db_and_tables()
-    sparser = SofmapParser(html_str=html, url=command.url)
+    sparser = SearchResultParser(html_str=html, url=command.url)
     sparser.execute()
     results = sparser.get_results()
     pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
