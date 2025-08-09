@@ -8,7 +8,7 @@ from domain.models.activitylog import (
     activitylog as m_actlog,
     enums as actlog_enums,
 )
-from databases.sqldb.activitylog import repository as a_repo
+from databases.sql.activitylog import repository as a_repo
 
 
 class UpdateActivityLog:

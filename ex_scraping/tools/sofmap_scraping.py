@@ -3,7 +3,7 @@ import asyncio
 import argparse
 import time
 
-from databases.sqldb.util import get_async_session
+from databases.sql.util import get_async_session
 from app.sofmap.web_scraper import scrape_and_save, ScrapeCommand
 from common import read_config
 

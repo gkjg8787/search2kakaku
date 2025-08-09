@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sofmap.parser import CategoryParser
 from sofmap.model import CategoryResult
 from domain.models.pricelog import repository as p_repo, pricelog as m_pricelog
-from databases.sqldb.pricelog.repository import CategoryRepository
+from databases.sql.pricelog.repository import CategoryRepository
 
 from .constants import (
     SOFMAP_TOP_URL,

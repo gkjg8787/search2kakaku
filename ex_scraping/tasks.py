@@ -3,7 +3,7 @@ import asyncio
 from celery import Celery
 from celery.schedules import crontab
 
-from databases.sqldb import util as db_util
+from databases.sql import util as db_util
 from app.update import scraping_urls
 from app.notification import send_pricelog
 

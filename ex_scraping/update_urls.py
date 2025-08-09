@@ -8,7 +8,7 @@ from common import logger_config
 from domain.models.activitylog import activitylog
 from domain.models.pricelog import pricelog
 from domain.models.notification import notification
-from databases.sqldb import util as db_util
+from databases.sql import util as db_util
 from app.update import scraping_urls
 
 CALLER_TYPE = "user"

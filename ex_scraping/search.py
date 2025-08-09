@@ -16,8 +16,8 @@ from app.sofmap import (
     constants as sofmap_const,
 )
 from domain.models.pricelog import pricelog as m_pricelog
-from databases.sqldb.pricelog import repository as db_repo
-from databases.sqldb import util as db_util
+from databases.sql.pricelog import repository as db_repo
+from databases.sql import util as db_util
 from common import read_config, logger_config
 
 

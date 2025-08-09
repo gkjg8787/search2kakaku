@@ -6,9 +6,9 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.pricelog import pricelog as m_pricelog, command as p_cmd
-from databases.sqldb.pricelog import repository as p_repo
+from databases.sql.pricelog import repository as p_repo
 from domain.models.notification import command as noti_cmd
-from databases.sqldb.notification import repository as n_repo
+from databases.sql.notification import repository as n_repo
 from .enums import APIURLName
 from .models import ParseInfosUpdate, ParseInfo, PriceUpdateResponse
 from app.activitylog.update import UpdateActivityLog

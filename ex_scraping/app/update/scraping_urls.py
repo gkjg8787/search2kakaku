@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.notification import command as noti_cmd
 from domain.models.pricelog import command as p_cmd
-from databases.sqldb.pricelog import repository as p_repo
-from databases.sqldb.notification import repository as n_repo
+from databases.sql.pricelog import repository as p_repo
+from databases.sql.notification import repository as n_repo
 from app.sofmap import web_scraper, constants as sofmap_contains
 from common import read_config
 from app.activitylog.update import UpdateActivityLog

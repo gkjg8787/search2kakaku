@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.pricelog import pricelog as m_pricelog
-from databases.sqldb import util as db_util
-from databases.sqldb.pricelog import repository as db_repo
+from databases.sql import util as db_util
+from databases.sql.pricelog import repository as db_repo
 from sofmap.parser import SearchResultParser
 from . import cookie_util, download, db_convert
 from .constants import A_SOFMAP_NETLOC

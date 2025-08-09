@@ -5,10 +5,10 @@ import uuid
 import structlog
 
 from common import logger_config
-from databases.sqldb.pricelog import repository as p_repo
+from databases.sql.pricelog import repository as p_repo
 from domain.models.pricelog import pricelog as m_pricelog
 from domain.models.notification import notification as m_noti
-from databases.sqldb import util as db_util
+from databases.sql import util as db_util
 from app.update.update_urls import (
     UpdateFuncType,
     UpdateNotificationResult,

@@ -1,7 +1,7 @@
 from domain.models.pricelog import pricelog
 from domain.models.notification import notification
 from domain.models.activitylog import activitylog
-from databases.sqldb import util as db_util
+from databases.sql import util as db_util
 
 
 def main():

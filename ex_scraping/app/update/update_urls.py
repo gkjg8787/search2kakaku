@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 
 from domain.models.pricelog import pricelog as m_pricelog, command as p_command
 from domain.models.notification import notification as m_noti, command as nofi_cmd
-from databases.sqldb.pricelog import repository as p_repo
-from databases.sqldb.notification import repository as n_repo
+from databases.sql.pricelog import repository as p_repo
+from databases.sql.notification import repository as n_repo
 
 
 class UpdateFuncType(Enum):
