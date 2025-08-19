@@ -1,11 +1,11 @@
 import os
 from common.read_config import get_api_options
-from .models import APIPathOption
+from .models.apioption import APIPathOption
 
 
 def get_api_base_url():
     apisendopt = get_api_options()
-    return apisendopt.post.url
+    return apisendopt.get.url
 
 
 def create_api_url(apiopt: APIPathOption):

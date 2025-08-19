@@ -16,12 +16,13 @@ class SofmapOptions(BaseModel):
     selenium: SelenimuTimeoutOptions
 
 
-class APIURLOtpions(BaseModel):
-    base_url: str
+class APIOtpion(BaseModel):
+    url: str
 
 
-class APISendingOptions(BaseModel):
-    urls: APIURLOtpions
+class APIOptions(BaseModel):
+    get: APIOtpion
+    post: APIOtpion
 
 
 class SQLParams(BaseModel):
@@ -68,9 +69,9 @@ def get_sofmap_options():
     return SofmapOptions(**lower_key_dict)
 
 
-def get_api_sending_options():
-    lower_key_dict = to_lower_keys(settings.API_SENDING_OPTIONS)
-    return APISendingOptions(**lower_key_dict)
+def get_api_options():
+    lower_key_dict = to_lower_keys(settings.API_OPTIONS)
+    return APIOptions(**lower_key_dict)
 
 
 def get_databases():

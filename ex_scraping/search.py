@@ -5,20 +5,18 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from sofmap import parser
-from domain.models.pricelog import repository as m_repo, command as p_cmd
+
 from app.sofmap import (
-    category as app_cate,
-    urlgenerate,
-    download,
-    db_convert,
-    cookie_util,
-    constants as sofmap_const,
+    web_scraper as sofmap_scraper,
+    enums as sofmap_enums,
+    models as sofmap_models,
 )
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sql.pricelog import repository as db_repo
 from databases.sql import util as db_util
-from common import read_config, logger_config
+from common import logger_config
+from app.getdata import get_search_info
+from app.getdata.models import info as info_model, search as search_model
 
 
 class SiteName:
@@ -60,7 +58,7 @@ def set_argparse():
         action="store_true",
         help="検索対象のカテゴリ一覧を表示します。このオプションを指定した場合、検索はされません。",
     )
-    CONDITIONS = [pt.name for pt in urlgenerate.ProductTypeOptions]
+    CONDITIONS = [pt.name for pt in sofmap_enums.ProductTypeOptions]
     sofmap_parser.add_argument(
         "-co",
         "--condition",
@@ -81,13 +79,13 @@ def set_argparse():
         default=50,
         help=f"検索対象の表示件数。初期値50",
     )
-    orderbys = [member.name for member in urlgenerate.OrderByOptions]
+    orderbys = [member.name for member in sofmap_enums.OrderByOptions]
     sofmap_parser.add_argument(
         "-o",
         "--orderby",
         type=lambda s: str(s).upper(),
         choices=orderbys,
-        default=urlgenerate.OrderByOptions.DEFAULT.name,
+        default=sofmap_enums.OrderByOptions.DEFAULT.name,
         help=f'検索の並び順: {", ".join(orderbys)}',
     )
     sofmap_parser.add_argument(
@@ -110,46 +108,32 @@ def set_argparse():
 
 
 async def get_category_list(
-    ses: AsyncSession,
-    repository: m_repo.ICategoryRepository,
+    sitename: str,
     is_akiba: bool,
-) -> list[str]:
-    if is_akiba:
-        entity_type = sofmap_const.A_SOFMAP_DB_ENTITY_TYPE
-    else:
-        entity_type = sofmap_const.SOFMAP_DB_ENTITY_TYPE
-    getcmd = p_cmd.CategoryGetCommand(entity_type=entity_type)
-    results = await repository.get(command=getcmd)
-    if not results:
-        await app_cate.create_category_data(ses=ses)
-
-    results = await repository.get(command=getcmd)
-    if not results:
-        return []
-    return [r.name for r in results]
+) -> list[dict]:
+    inforeq = info_model.InfoRequest(
+        sitename=sitename, infoname="category", options={"is_akiba": is_akiba}
+    )
+    ok, result = await get_search_info(inforeq=inforeq)
+    if ok and isinstance(result, info_model.InfoResponse):
+        return [r.model_dump() for r in result.results]
+    return []
 
 
 async def get_category_id(
-    ses: AsyncSession,
-    repository: m_repo.ICategoryRepository,
+    sitename: str,
     is_akiba: bool,
     category_name: str,
 ) -> str:
     if not category_name:
         return ""
-    if is_akiba:
-        entity_type = sofmap_const.A_SOFMAP_DB_ENTITY_TYPE
-    else:
-        entity_type = sofmap_const.SOFMAP_DB_ENTITY_TYPE
-    getcmd = p_cmd.CategoryGetCommand(name=category_name, entity_type=entity_type)
-    results = await repository.get(command=getcmd)
-    if not results:
-        await app_cate.create_category_data(ses=ses)
-
-    results = await repository.get(command=getcmd)
-    if not results:
+    result = await get_category_list(sitename=sitename, is_akiba=is_akiba)
+    if not result:
         return ""
-    return results[0].category_id
+    for r in result:
+        if r["name"] == category_name:
+            return r["id"]
+    return ""
 
 
 async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog]):
@@ -162,8 +146,7 @@ async def sofmap_command(argp, log):
     async for ses in db_util.get_async_session():
         if argp.categorylist:
             category_list = await get_category_list(
-                ses=ses,
-                repository=db_repo.CategoryRepository(ses=ses),
+                sitename=SiteName.sofmap,
                 is_akiba=argp.akiba,
             )
             log.info(category_list)
@@ -172,14 +155,12 @@ async def sofmap_command(argp, log):
             log.info("paramter error. search_query is None")
             return
         gid = await get_category_id(
-            ses=ses,
-            repository=db_repo.CategoryRepository(ses=ses),
+            sitename=SiteName.sofmap,
             is_akiba=argp.akiba,
             category_name=argp.category,
         )
         log.info("get parameter", gid=gid, **vars(argp))
-        search_url = urlgenerate.build_search_url(
-            search_keyword=argp.search_query,
+        searchoptions = sofmap_models.SofmapSearchDataOptions(
             is_akiba=argp.akiba,
             direct_search=argp.direct_search,
             gid=gid,
@@ -187,38 +168,35 @@ async def sofmap_command(argp, log):
             display_count=argp.displaycount,
             order_by=argp.orderby,
         )
-        log.info("generate url", search_url=search_url)
-        cookie_dict_list = cookie_util.create_cookies(
-            is_akiba=argp.akiba, is_ucaa=argp.ucaa
+        searchreq = search_model.SearchRequest(
+            url="",
+            search_keyword=argp.search_query,
+            sitename=SiteName.sofmap,
+            options=searchoptions.model_dump(exclude_none=True),
         )
-        sofmapopt = read_config.get_sofmap_options()
-        seleniumopt = read_config.get_selenium_options()
+
+        log.info("setting params", searchreq=searchreq.model_dump())
         try:
-            html = download.download_remotely(
-                url=search_url,
-                cookie_dict_list=cookie_dict_list,
-                page_load_timeout=sofmapopt.selenium.page_load_timeout,
-                tag_wait_timeout=sofmapopt.selenium.tag_wait_timeout,
-                selenium_url=seleniumopt.remote_url,
+            ok, result = await sofmap_scraper.download_with_api(
+                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
             )
+            if not ok:
+                log.error("download failed", error_msg=result)
+                return
         except Exception as e:
-            log.error(f"download error {e}", url=search_url)
+            log.error(f"download error {e}")
             return
         log.info("download end")
-        sparser = parser.SearchResultParser(html_str=html, url=search_url)
-        sparser.execute()
-        results = sparser.get_results()
-        pricelog_list = db_convert.DBModelConvert.parseresults_to_db_model(
-            results=results, remove_duplicate=True
-        )
-        if not pricelog_list:
+        if not isinstance(result, list):
+            log.error(f"result is not list. type :{type(result)}", result=result)
+            return
+        if not result:
             log.info("data is None")
             return
-        if not argp.without_registration:
-            await save_result(ses=ses, pricelog_list=pricelog_list)
-            log.info("save to database")
+        if argp.without_registration:
+            log.info("data is save")
         if argp.verbose:
-            log.info(pricelog_list, verbose=True)
+            log.info(result, verbose=True)
     return
 
 
