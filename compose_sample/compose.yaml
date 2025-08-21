@@ -7,22 +7,6 @@ services:
       - ./ex_scraping:/app/ex_scraping
       - ./data/db:/app/db
       - ./data/log:/app/log
-  selenium:
-    container_name: selenium-chrome
-    image: selenium/standalone-chrome
-    ports:
-    # Selenium サーバに接続するポート
-      - "4444:4444"
-    # VNC で接続するポート
-      - "5900:5900"
-    # Selenium サーバのログを出力するポート
-      - "7900:7900"
-    # コンテナが使用するメモリの上限を設定
-    shm_size: "2gb"
-    ulimits:
-      nofile:
-        soft: 32768
-        hard: 32768
   redis:
     image: redis:latest
     container_name: redis_broker

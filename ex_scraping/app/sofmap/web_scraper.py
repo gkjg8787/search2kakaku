@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sql.pricelog import repository as db_repo
 from .constants import A_SOFMAP_NETLOC
-import db_convert
+from . import db_convert
 from app.getdata.models import search as search_model
 from app.getdata import get_search
 

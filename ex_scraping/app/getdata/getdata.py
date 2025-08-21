@@ -1,5 +1,6 @@
 import httpx
 
+from common import read_config
 from .factory import APIPathOptionFactory
 from .enums import APIURLName
 from .util import create_api_url
@@ -8,10 +9,10 @@ from .models.search import SearchRequest, SearchResponse
 from .models.error import ErrorMsg
 
 
-async def _get_search_info(apiurlname: APIURLName, data: dict):
+async def _get_search_info(apiurlname: APIURLName, data: dict, timeout: float):
     apiopt = APIPathOptionFactory().create(apiurlname=apiurlname)
     api_url = create_api_url(apiopt=apiopt)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             match apiopt.method.lower():
                 case "post":
@@ -20,7 +21,7 @@ async def _get_search_info(apiurlname: APIURLName, data: dict):
                     raise ValueError(f"no support method, {apiopt.method.lower()}")
             res.raise_for_status()
         except Exception as e:
-            return False, f"failed to api, {e}", None
+            return False, f"failed to api, type:{type(e).__name__}, {e}", None
     res_json = res.json()
     if not isinstance(res_json, dict):
         return False, f"invalid type response, type:{type(res_json)}, {res_json}", None
@@ -43,6 +44,7 @@ async def get_search_info(inforeq: InfoRequest):
     ok, msg, result = await _get_search_info(
         apiurlname=APIURLName.SEARCH_INFO,
         data=inforeq.model_dump(mode="json"),
+        timeout=read_config.get_api_options().get_data.timeout,
     )
     if not ok:
         return ok, msg
@@ -66,6 +68,7 @@ async def get_search(searchreq: SearchRequest):
     ok, msg, result = await _get_search_info(
         apiurlname=APIURLName.SEARCH,
         data=searchreq.model_dump(mode="json"),
+        timeout=read_config.get_api_options().get_data.timeout,
     )
     if not ok:
         return ok, msg

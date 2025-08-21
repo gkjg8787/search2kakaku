@@ -16,3 +16,7 @@ TAG_WAIT_TIMEOUT = 15
 
 SOFMAP_DB_ENTITY_TYPE = "www.sofmap.com"
 A_SOFMAP_DB_ENTITY_TYPE = "a.sofmap.com"
+
+
+class SiteName:
+    sofmap = "sofmap"

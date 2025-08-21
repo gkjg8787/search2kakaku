@@ -2,19 +2,20 @@
 
 ## 概要
 
-- コマンドによる価格情報取得、検索＆登録、アップデート。selenium 使用。
+- コマンドによる価格情報取得、検索＆登録、アップデート。[external_search](https://github.com/gkjg8787/external_search)が必要。
 
 ## 対応サイト
 
 - sofmap
-  - 検索結果`https://www.sofmap.com/search_result.aspx`に対応。個別ページ`https://www.sofmap.com/product_detail.aspx`には非対応。akiba sofmap`https://a.sofmap.com/`も同様。
 
 ## 前提
 
 - docker 導入済み
+- [external_search](https://github.com/gkjg8787/external_search)の稼働。
 
 ## 起動
 
+- ex_scraping/settings.py の API_OPTIONS を設定する。
 - `docker compose up --build -d`
 
 ## 使い方

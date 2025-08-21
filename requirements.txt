@@ -1,8 +1,6 @@
 pydantic >=2.0, <3.0
 httpx
 sqlmodel
-bs4
-selenium
 aiosqlite
 celery[redis]
 structlog

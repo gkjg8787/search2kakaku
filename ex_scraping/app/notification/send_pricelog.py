@@ -57,7 +57,7 @@ async def send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
             ses=ses, pricelog_list=pricelog_list
         )
     except Exception as e:
-        return False, f"data convert error, {e}"
+        return False, f"data convert error, type:{type(e).__name__}, {e}"
     async with httpx.AsyncClient() as client:
         try:
             match apiopt.method.lower():
@@ -77,7 +77,7 @@ async def send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
                     raise ValueError(f"no support method, {apiopt.method.lower()}")
             res.raise_for_status()
         except Exception as e:
-            return False, f"failed to api, {e}"
+            return False, f"failed to api, type:{type(e).__name__}, {e}"
     res_json = res.json()
     if isinstance(res_json, list):
         if not res_json or len(res_json) > 1:

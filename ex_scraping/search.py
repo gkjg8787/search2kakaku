@@ -17,10 +17,7 @@ from databases.sql import util as db_util
 from common import logger_config
 from app.getdata import get_search_info
 from app.getdata.models import info as info_model, search as search_model
-
-
-class SiteName:
-    sofmap = "sofmap"
+from app.sofmap.constants import SiteName
 
 
 def set_argparse():
@@ -132,7 +129,7 @@ async def get_category_id(
         return ""
     for r in result:
         if r["name"] == category_name:
-            return r["id"]
+            return r["gid"]
     return ""
 
 
@@ -184,7 +181,7 @@ async def sofmap_command(argp, log):
                 log.error("download failed", error_msg=result)
                 return
         except Exception as e:
-            log.error(f"download error {e}")
+            log.error(f"download error type:{type(e).__name__}, {e}")
             return
         log.info("download end")
         if not isinstance(result, list):

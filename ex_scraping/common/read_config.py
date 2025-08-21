@@ -3,26 +3,14 @@ from pydantic import BaseModel, Field
 import settings
 
 
-class SeleniumOptions(BaseModel):
-    remote_url: str
-
-
-class SelenimuTimeoutOptions(BaseModel):
-    page_load_timeout: int = Field(ge=2, le=100)
-    tag_wait_timeout: int = Field(ge=1, le=99)
-
-
-class SofmapOptions(BaseModel):
-    selenium: SelenimuTimeoutOptions
-
-
 class APIOtpion(BaseModel):
     url: str
+    timeout: float = Field(default=5.0)
 
 
 class APIOptions(BaseModel):
-    get: APIOtpion
-    post: APIOtpion
+    get_data: APIOtpion
+    post_data: APIOtpion
 
 
 class SQLParams(BaseModel):
@@ -57,16 +45,6 @@ def to_lower_keys(obj):
     else:
         # 辞書でもリストでもない場合はそのまま返す
         return obj
-
-
-def get_selenium_options():
-    lower_key_dict = to_lower_keys(settings.SELENIUM_OPTIONS)
-    return SeleniumOptions(**lower_key_dict)
-
-
-def get_sofmap_options():
-    lower_key_dict = to_lower_keys(settings.SOFMAP_OPTIONS)
-    return SofmapOptions(**lower_key_dict)
 
 
 def get_api_options():

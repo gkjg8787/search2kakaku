@@ -11,27 +11,14 @@ DATABASES = {
         "database": f"{BASE_DIR}/db/database.db",
     },
 }
-
-SELENIUM_OPTIONS = {
-    "REMOTE_URL": "http://selenium:4444/wd/hub",
-}
-SOFMAP_OPTIONS = {
-    "selenium": {
-        "PAGE_LOAD_TIMEOUT": 30,
-        "TAG_WAIT_TIMEOUT": 15,
-    }
-}
-API_SENDING_OPTIONS = {
-    "urls": {
-        "base_url": "http://localhost:8000/api/",
-    }
-}
 API_OPTIONS = {
     "get_data": {
         "url": "http://localhost:8060/api/",
+        "timeout": 15.0,
     },
     "post_data": {
         "url": "http://localhost:8000/api/",
+        "timeout": 7.0,
     },
 }
 LOG_OPTIONS = {"directory_path": f"{BASE_DIR}/log/"}

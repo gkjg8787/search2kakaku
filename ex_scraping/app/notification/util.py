@@ -5,7 +5,7 @@ from .models import APIPathOption
 
 def get_api_base_url():
     apisendopt = get_api_options()
-    return apisendopt.post.url
+    return apisendopt.post_data.url
 
 
 def create_api_url(apiopt: APIPathOption):

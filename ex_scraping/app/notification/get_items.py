@@ -2,6 +2,8 @@ import uuid
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from common import read_config
 from .util import create_api_url
 from .enums import APIURLName
 from .models import URLtoItemGetResponse
@@ -12,11 +14,11 @@ ACTIVITY_TYPE = "get_items_by_url_with_api"
 
 
 async def get_items_with_api_url(
-    url: str,
+    url: str, timeout: float
 ) -> tuple[bool, str, URLtoItemGetResponse | None]:
     apiopt = APIPathOptionFactory().create(apiurlname=APIURLName.GET_ITEMS_BY_URL)
     api_url = create_api_url(apiopt=apiopt)
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=timeout) as client:
         try:
             match apiopt.method.lower():
                 case "get":
@@ -25,7 +27,7 @@ async def get_items_with_api_url(
                     raise ValueError(f"no support method, {apiopt.method.lower()}")
             res.raise_for_status()
         except Exception as e:
-            return False, f"failed to api, {e}", None
+            return False, f"failed to api, type:{type(e).__name__}, {e}", None
     res_json = res.json()
     if not isinstance(res_json, dict):
         return False, f"invalid type response, type:{type(res_json)}, {res_json}", None
@@ -59,7 +61,9 @@ async def get_items_by_url_with_api(
     results = []
     err_msgs = []
     for url in urls:
-        ok, msg, response = await get_items_with_api_url(url=url)
+        ok, msg, response = await get_items_with_api_url(
+            url=url, timeout=read_config.get_api_options().post_data.timeout
+        )
 
         if response and response.items:
             items_dict = {item.item_id: item.name for item in response.items}

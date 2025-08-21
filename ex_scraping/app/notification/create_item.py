@@ -40,7 +40,7 @@ async def send_itemname_and_urls_to_api(
                     raise ValueError(f"no support method, {apiopt.method.lower()}")
             res.raise_for_status()
         except Exception as e:
-            return False, f"failed to api, {e}", None
+            return False, f"failed to api, type:{type(e).__name__}, {e}", None
     res_json = res.json()
     if not isinstance(res_json, dict):
         return False, f"invalid type response, type:{type(res_json)}, {res_json}", None

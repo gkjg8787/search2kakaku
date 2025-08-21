@@ -14,6 +14,7 @@ from common import read_config
 from app.activitylog.update import UpdateActivityLog
 from app.activitylog.util import is_updating_urls_or_sending_to_api
 from . import constants as update_const
+from app.getdata.models import search as search_models
 
 
 def is_a_sofmap(url: str):
@@ -51,8 +52,6 @@ async def scraping_and_save_target_urls(
         return
     target_url_ids = [urlnoti.url_id for urlnoti in target_urlnotis]
     urlrepo = p_repo.URLRepository(ses=ses)
-    sofmapopts = read_config.get_sofmap_options()
-    seleniumopts = read_config.get_selenium_options()
     target_results = {}
     err_msgs = []
     err_ids = []
@@ -63,15 +62,16 @@ async def scraping_and_save_target_urls(
             if log:
                 log.warning("URL not found", url_id=url_id)
             continue
-        command = web_scraper.ScrapeCommand(
+        searchreq = search_models.SearchRequest(
             url=target_url.url,
-            async_session=ses,
-            is_ucaa=is_a_sofmap(target_url.url),
-            selenium_url=seleniumopts.remote_url,
-            page_load_timeout=sofmapopts.selenium.page_load_timeout,
-            tag_wait_timeout=sofmapopts.selenium.tag_wait_timeout,
+            search_keyword=None,
+            sitename=sofmap_contains.SiteName.sofmap,
+            options={},
         )
-        ok, msg = await web_scraper.scrape_and_save(command=command)
+        ok, result = await web_scraper.download_with_api(
+            ses=ses, searchreq=searchreq, save_to_db=True
+        )
+
         await ses.refresh(target_url)
         if ok:
             target_results[target_url.id] = {}
@@ -79,6 +79,7 @@ async def scraping_and_save_target_urls(
                 log.info("update and save ... ok", url=target_url.url)
             await asyncio.sleep(update_const.OK_WAIT_TIME)
             continue
+        msg = result
         target_results[target_url.id] = {"error": f"{msg}"}
         err_msgs.append("{" + f"{target_url.id}:{msg}" + "}")
         err_ids.append(target_url.id)
