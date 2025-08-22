@@ -16,6 +16,8 @@
 ## 起動
 
 - ex_scraping/settings.py の API_OPTIONS を設定する。
+  - `get_data->url` を external_search の URL に書き換える。
+  - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)への接続が必要なら`post_data->url`も書き換える。
 - `docker compose up --build -d`
 
 ## 使い方
@@ -26,15 +28,16 @@
   - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
   - この時点ではアップデート対象にはならない。
 - アップデート対象情報の確認
-  - `python register_for_updates.py view` で URL のアップデート対象かどうかを確認可。is_active=True でアップデート対象
+  - `python register_for_updates.py view` で URL のアップデート対象かどうかを確認可。`is_active:True` でアップデート対象
 - アップデート対象の登録
-  - アップデート対象に新規登録<br>`python register_for_updates.py add --new`
-  - 検索を挟まず直接 URL をアップデート対象に登録
-    - 登録したい URL 一覧を一行一 URL のファイルを用意する。例 urls.txt
+  - 既に検索済み(search.py)をアップデート対象に新規登録<br>`python register_for_updates.py add --new`
+  - 検索(search.py)を使わず直接 URL をアップデート対象に登録
+    - 登録したい URL 一覧を一行一 URL のファイルを用意する。ファイル名は任意。例 urls.txt
     - ファイルに書かれた URL を登録<br>`python register_for_updates.py add -f urls.txt`
   - アップデート対象から URL を外す
-    - 外したい URL 一覧を一行一 URL のファイルを用意する。 例 urls.txt
-    - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
+    - ファイルで設定
+      - 外したい URL 一覧を一行一 URL のファイルを用意する。ファイル名は任意。 例 urls.txt
+      - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
     - 全て外す<br>`python register_for_updates.py remove --all`
 - アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
   - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/external_scraping#kakakuscraping-fastapi-への通知)を参照
@@ -46,7 +49,7 @@
 - celery beat を使用すると定期的にアップデートすることができる。対象のファイルは tasks.py
 - サンプルとして compose_sample ディレクトリ に celery beat を動かす compose.yaml を置いた。このディレクトリ配下を README.md があるフォルダにコピーして使用する。
 - tasks.py の` "schedule": crontab(hour="14"),`を変更することで動作時間を変更可能。
-- compose_sample 配下の compose.yaml を使用する際は一度 ex_scraping だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>cp tool/db_create.py . <br>python db_create.py<br>DB 作成後、他のコンテナを起動する。
+- compose_sample 配下の compose.yaml を使用する際は一度 ex_scraping だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>`cp tool/db_create.py .` <br>`python db_create.py`<br>DB 作成後、他のコンテナを起動する。
 
 ### kakakuscraping-fastapi への通知
 
@@ -63,3 +66,6 @@
 ### その他
 
 - コマンドログを表示。<br>`python view_log.py`
+- 取得した URL のログを見るには sqlite3 を使う。データベースのパスと名前は settings.py で設定したものを使用する。<br>`sqlite3 ../db/database.db "select * from pricelog"`
+- DB について
+  - settings.py に非同期(a_sync)と同期(sync)の設定があるが同期は DB 作成の時に使用。それ以外のアクセスは基本的に非同期のみを使用している。

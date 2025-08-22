@@ -86,10 +86,6 @@ def set_argparse():
         help=f'検索の並び順: {", ".join(orderbys)}',
     )
     sofmap_parser.add_argument(
-        "--ucaa",
-        action="store_true",
-    )
-    sofmap_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",

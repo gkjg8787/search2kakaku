@@ -31,6 +31,15 @@ class LogOptions(BaseModel):
     directory_path: str
 
 
+class UpdateRequestOptions(BaseModel):
+    convert_to_direct_search: bool | None = Field(default=None)
+    remove_duplicates: bool | None = Field(default=None)
+
+
+class UpdateURLOptions(BaseModel):
+    request_options: UpdateRequestOptions
+
+
 def to_lower_keys(obj):
     if isinstance(obj, dict):
         # 新しい辞書を構築し、各キーを小文字に変換
@@ -60,3 +69,8 @@ def get_databases():
 def get_log_options():
     lower_key_dict = to_lower_keys(settings.LOG_OPTIONS)
     return LogOptions(**lower_key_dict)
+
+
+def get_update_url_options():
+    lower_key_dict = to_lower_keys(settings.UPDATE_URL_OPTIONS)
+    return UpdateURLOptions(**lower_key_dict)

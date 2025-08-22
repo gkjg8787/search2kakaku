@@ -38,10 +38,9 @@ async def download_with_api(
     ok, result = await get_search(searchreq=searchreq)
     if not ok:
         return ok, result
-    if isinstance(result, search_model.SearchResults):
-        pricelog_list = db_convert.DBModelConvert.searchresult_to_db_models(
-            results=result
-        )
-        if save_to_db:
-            await save_result(pricelog_list=pricelog_list, ses=ses)
+    if not isinstance(result, search_model.SearchResults):
+        return False, f"type is not SearchResults, type:{type(result)}, value:{result}"
+    pricelog_list = db_convert.DBModelConvert.searchresult_to_db_models(results=result)
+    if save_to_db:
+        await save_result(pricelog_list=pricelog_list, ses=ses)
     return ok, pricelog_list

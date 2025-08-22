@@ -1,6 +1,5 @@
 import asyncio
 from urllib.parse import urlparse
-from enum import Enum, auto
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,6 +54,7 @@ async def scraping_and_save_target_urls(
     target_results = {}
     err_msgs = []
     err_ids = []
+    urlopts = read_config.get_update_url_options()
     for url_id in target_url_ids:
         target_url = await urlrepo.get(command=p_cmd.URLGetCommand(id=url_id))
         if not target_url:
@@ -66,7 +66,7 @@ async def scraping_and_save_target_urls(
             url=target_url.url,
             search_keyword=None,
             sitename=sofmap_contains.SiteName.sofmap,
-            options={},
+            options=urlopts.request_options.model_dump(exclude_none=True),
         )
         ok, result = await web_scraper.download_with_api(
             ses=ses, searchreq=searchreq, save_to_db=True

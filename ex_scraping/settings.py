@@ -22,3 +22,9 @@ API_OPTIONS = {
     },
 }
 LOG_OPTIONS = {"directory_path": f"{BASE_DIR}/log/"}
+UPDATE_URL_OPTIONS = {
+    "request_options": {
+        # "convert_to_direct_search": False,
+        # "remove_duplicates": True,
+    }
+}
