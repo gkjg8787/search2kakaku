@@ -1,8 +1,8 @@
-# 外付け HTML パーサー
+# Search API to kakakuscraping API
 
 ## 概要
 
-- コマンドによる価格情報取得、検索＆登録、アップデート。[external_search](https://github.com/gkjg8787/external_search)が必要。
+- コマンドによる価格情報取得、検索＆登録、アップデート。kakakuscraping-fastapiへの情報の送信（任意）。[external_search](https://github.com/gkjg8787/external_search)が必要。[kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)を使用（※必要なら）。
 
 ## 対応サイト
 
@@ -13,6 +13,7 @@
 
 - docker 導入済み
 - [external_search](https://github.com/gkjg8787/external_search)の稼働。
+- [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)の稼働(※必要なら)。
 
 ## 起動
 
