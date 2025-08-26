@@ -14,6 +14,7 @@
 - docker 導入済み
 - [external_search](https://github.com/gkjg8787/external_search)の稼働。
 - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)の稼働(※必要なら)。
+- celery & redis (※自動アップデートを使用するなら)。
 
 ## 起動
 
@@ -25,6 +26,7 @@
 ## 使い方
 
 - 基本は`search2kakaku`コンテナに入ってコマンドで操作する。<br>`docker compose exec -it search2kakaku bash`
+- 実行するディレクトリパスはコンテナ内の`/app/search2kakaku`を想定。
 
 - 検索と価格情報の登録
   - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
