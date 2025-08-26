@@ -17,14 +17,14 @@
 
 ## 起動
 
-- ex_scraping/settings.py の API_OPTIONS を設定する。
+- search2kakaku/settings.py の API_OPTIONS を設定する。
   - `get_data->url` を external_search の URL に書き換える。
   - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)への接続が必要なら`post_data->url`も書き換える。
 - `docker compose up --build -d`
 
 ## 使い方
 
-- 基本は`ex_scraping`コンテナに入ってコマンドで操作する。<br>`docker compose exec -it ex_scraping bash`
+- 基本は`search2kakaku`コンテナに入ってコマンドで操作する。<br>`docker compose exec -it search2kakaku bash`
 
 - 検索と価格情報の登録
   - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
@@ -42,7 +42,7 @@
       - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
     - 全て外す<br>`python register_for_updates.py remove --all`
 - アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
-  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/external_scraping#kakakuscraping-fastapi-への通知)を参照
+  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/search2kakaku#kakakuscraping-fastapi-への通知)を参照
 - 設定した kakakuscraping の API へログデータを送信<br>`python send_to_api.py send_log`
 - ※詳細オプションは `--help` を参照
 
@@ -51,12 +51,12 @@
 - celery beat を使用すると定期的にアップデートすることができる。対象のファイルは tasks.py
 - サンプルとして compose_sample ディレクトリ に celery beat を動かす compose.yaml を置いた。このディレクトリ配下を README.md があるフォルダにコピーして使用する。
 - tasks.py の` "schedule": crontab(hour="14"),`を変更することで動作時間を変更可能。
-- compose_sample 配下の compose.yaml を使用する際は一度 ex_scraping だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>`cp tool/db_create.py .` <br>`python db_create.py`<br>DB 作成後、他のコンテナを起動する。
+- compose_sample 配下の compose.yaml を使用する際は一度 search2kakaku だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>`cp tool/db_create.py .` <br>`python db_create.py`<br>DB 作成後、他のコンテナを起動する。
 
 ### kakakuscraping-fastapi への通知
 
 - 使用するには以下の設定が必要。
-  - ex_scraping/settings.py の送信先の API の URL 設定を書き換える。
+  - search2kakaku/settings.py の送信先の API の URL 設定を書き換える。
   - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)側の API も有効にする。
   - kakakuscraping-fastapi のアイテムにアップデート対象の URL を登録する必要がある。
     - 対象の API 側の docs から直接操作して登録する方法とコマンドを使用する方法がある。ここではコマンドのみ説明。

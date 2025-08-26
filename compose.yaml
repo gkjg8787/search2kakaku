@@ -1,5 +1,5 @@
 services:
-  ex_scraping:
+  search2kakaku:
     build: ./
     tty: true
     init: true

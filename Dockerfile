@@ -28,4 +28,4 @@ ENV PATH /app/venv/bin:$PATH
 
 COPY . .
 
-WORKDIR /app/ex_scraping
+WORKDIR /app/search2kakaku
