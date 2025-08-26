@@ -1,4 +1,6 @@
 from sqlmodel import Field, Relationship
+from sqlalchemy import JSON, Column
+from sqlalchemy.ext.mutable import MutableDict
 
 from domain.models.base_model import SQLBase
 
@@ -30,6 +32,9 @@ class PriceLog(SQLBase, table=True):
     stock_quantity: int = Field(default=constants.NONE_STOCK_NUM)
     used_list_url: str = Field(default="")
     sub_price: int = Field(default=constants.NONE_PRICE)
+    others: dict = Field(
+        default_factory=dict, sa_column=Column(MutableDict.as_mutable(JSON))
+    )
 
     url_id: int | None = Field(default=None, foreign_key="url.id")
     url: URL | None = Relationship(back_populates="logs")

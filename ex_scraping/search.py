@@ -11,13 +11,15 @@ from app.sofmap import (
     enums as sofmap_enums,
     models as sofmap_models,
 )
+from app.geo import web_scraper as geo_scraper
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sql.pricelog import repository as db_repo
 from databases.sql import util as db_util
+from databases.sql.create_db import create_db
 from common import logger_config
 from app.getdata import get_search_info
 from app.getdata.models import info as info_model, search as search_model
-from app.sofmap.constants import SiteName
+from app.enums import SiteName
 
 
 def set_argparse():
@@ -28,9 +30,38 @@ def set_argparse():
     subparsers = parser.add_subparsers(
         dest="sitename", help="検索対象サイト", required=True
     )
+    sofmap_argparse(subparsers=subparsers)
+    geo_argparse(subparsers=subparsers)
 
+    return parser.parse_args()
+
+
+def geo_argparse(subparsers):
+    geo_parser = subparsers.add_parser(
+        SiteName.GEO.value,
+        help="geoを検索",
+    )
+    geo_parser.add_argument(
+        "search_query",
+        nargs="?",
+        help="検索したいキーワード（例: 'マリオカートワールド'）",
+    )
+    geo_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="結果を標準出力",
+    )
+    geo_parser.add_argument(
+        "--without_registration",
+        action="store_true",
+        help="作成したURL含む、結果をデータベースに登録しない",
+    )
+
+
+def sofmap_argparse(subparsers):
     sofmap_parser = subparsers.add_parser(
-        SiteName.sofmap,
+        SiteName.SOFMAP.value,
         help="sofmapを検索",
     )
     sofmap_parser.add_argument(
@@ -97,8 +128,6 @@ def set_argparse():
         help="作成したURL含む、結果をデータベースに登録しない",
     )
 
-    return parser.parse_args()
-
 
 async def get_category_list(
     sitename: str,
@@ -135,11 +164,10 @@ async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
 
 
 async def sofmap_command(argp, log):
-    db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
         if argp.categorylist:
             category_list = await get_category_list(
-                sitename=SiteName.sofmap,
+                sitename=SiteName.SOFMAP.value,
                 is_akiba=argp.akiba,
             )
             log.info(category_list)
@@ -148,7 +176,7 @@ async def sofmap_command(argp, log):
             log.info("paramter error. search_query is None")
             return
         gid = await get_category_id(
-            sitename=SiteName.sofmap,
+            sitename=SiteName.SOFMAP.value,
             is_akiba=argp.akiba,
             category_name=argp.category,
         )
@@ -164,13 +192,48 @@ async def sofmap_command(argp, log):
         searchreq = search_model.SearchRequest(
             url="",
             search_keyword=argp.search_query,
-            sitename=SiteName.sofmap,
+            sitename=SiteName.SOFMAP.value,
             options=searchoptions.model_dump(exclude_none=True),
         )
 
         log.info("setting params", searchreq=searchreq.model_dump())
         try:
             ok, result = await sofmap_scraper.download_with_api(
+                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
+            )
+            if not ok:
+                log.error("download failed", error_msg=result)
+                return
+        except Exception as e:
+            log.error(f"download error type:{type(e).__name__}, {e}")
+            return
+        log.info("download end")
+        if not isinstance(result, list):
+            log.error(f"result is not list. type :{type(result)}", result=result)
+            return
+        if not result:
+            log.info("data is None")
+            return
+        if argp.without_registration:
+            log.info("data is save")
+        if argp.verbose:
+            log.info(result, verbose=True)
+    return
+
+
+async def geo_command(argp, log):
+    async for ses in db_util.get_async_session():
+        if not argp.search_query:
+            log.info("paramter error. search_query is None")
+            return
+        searchreq = search_model.SearchRequest(
+            url="",
+            search_keyword=argp.search_query,
+            sitename=SiteName.GEO.value,
+        )
+        log.info("setting params", searchreq=searchreq.model_dump())
+        try:
+            ok, result = await geo_scraper.download_with_api(
                 ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
             )
             if not ok:
@@ -201,8 +264,14 @@ async def main():
     )
 
     argp = set_argparse()
-    if argp.sitename == SiteName.sofmap:
-        await sofmap_command(argp=argp, log=log)
+    create_db()
+    match argp.sitename:
+        case SiteName.SOFMAP.value:
+            await sofmap_command(argp=argp, log=log)
+        case SiteName.GEO.value:
+            await geo_command(argp=argp, log=log)
+        case _:
+            raise ValueError("invalid sitename")
 
 
 if __name__ == "__main__":

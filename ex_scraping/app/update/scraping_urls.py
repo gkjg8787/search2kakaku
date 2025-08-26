@@ -14,6 +14,7 @@ from app.activitylog.update import UpdateActivityLog
 from app.activitylog.util import is_updating_urls_or_sending_to_api
 from . import constants as update_const
 from app.getdata.models import search as search_models
+from app.enums import SiteName
 
 
 def is_a_sofmap(url: str):
@@ -65,7 +66,7 @@ async def scraping_and_save_target_urls(
         searchreq = search_models.SearchRequest(
             url=target_url.url,
             search_keyword=None,
-            sitename=sofmap_contains.SiteName.sofmap,
+            sitename=SiteName.SOFMAP.value,
             options=urlopts.request_options.model_dump(exclude_none=True),
         )
         ok, result = await web_scraper.download_with_api(
