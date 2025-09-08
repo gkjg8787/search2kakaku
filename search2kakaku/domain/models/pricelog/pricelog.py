@@ -27,7 +27,7 @@ class PriceLog(SQLBase, table=True):
     salename: str = Field(default="")
     is_success: bool
     image_url: str
-    stock_msg: str
+    stock_msg: str = Field(default="")
     point: int = Field(default=constants.NONE_POINT)
     stock_quantity: int = Field(default=constants.NONE_STOCK_NUM)
     used_list_url: str = Field(default="")

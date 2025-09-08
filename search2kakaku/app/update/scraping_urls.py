@@ -8,13 +8,15 @@ from domain.models.notification import command as noti_cmd
 from domain.models.pricelog import command as p_cmd
 from databases.sql.pricelog import repository as p_repo
 from databases.sql.notification import repository as n_repo
-from app.sofmap import web_scraper, constants as sofmap_contains
+from app.sofmap import web_scraper as sofmap_scraper, constants as sofmap_contains
+from app.geo import web_scraper as geo_scraper
+from app.iosys import web_scraper as iosys_scraper
 from common import read_config
 from app.activitylog.update import UpdateActivityLog
 from app.activitylog.util import is_updating_urls_or_sending_to_api
 from . import constants as update_const
 from app.getdata.models import search as search_models
-from app.enums import SiteName
+from app.enums import SiteName, SupportDomain
 
 
 def is_a_sofmap(url: str):
@@ -63,15 +65,62 @@ async def scraping_and_save_target_urls(
             if log:
                 log.warning("URL not found", url_id=url_id)
             continue
-        searchreq = search_models.SearchRequest(
-            url=target_url.url,
-            search_keyword=None,
-            sitename=SiteName.SOFMAP.value,
-            options=urlopts.request_options.model_dump(exclude_none=True),
-        )
-        ok, result = await web_scraper.download_with_api(
-            ses=ses, searchreq=searchreq, save_to_db=True
-        )
+
+        parsed_url = urlparse(target_url.url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            target_results[url_id] = {"error": "Invalid URL"}
+            err_msgs.append("{" + f"{url_id}:Invalid URL" + "}")
+            err_ids.append(url_id)
+            if log:
+                log.error("Invalid URL", url=target_url.url)
+            continue
+
+        match parsed_url.netloc:
+            case SupportDomain.SOFMAP.value | SupportDomain.A_SOFMAP.value:
+                searchreq = search_models.SearchRequest(
+                    url=target_url.url,
+                    search_keyword=None,
+                    sitename=SiteName.SOFMAP.value,
+                    options=urlopts.request_options.model_dump(exclude_none=True),
+                )
+                ok, result = await sofmap_scraper.download_with_api(
+                    ses=ses, searchreq=searchreq, save_to_db=True
+                )
+            case SupportDomain.GEO.value:
+                searchreq = search_models.SearchRequest(
+                    url=target_url.url,
+                    search_keyword=None,
+                    sitename=SiteName.GEO.value,
+                    options=urlopts.request_options.model_dump(exclude_none=True),
+                )
+                ok, result = await geo_scraper.download_with_api(
+                    ses=ses, searchreq=searchreq, save_to_db=True
+                )
+            case SupportDomain.IOSYS.value:
+                searchreq = search_models.SearchRequest(
+                    url=target_url.url,
+                    search_keyword=None,
+                    sitename=SiteName.IOSYS.value,
+                    options=urlopts.request_options.model_dump(exclude_none=True),
+                )
+                ok, result = await iosys_scraper.download_with_api(
+                    ses=ses, searchreq=searchreq, save_to_db=True
+                )
+            case _:
+                target_results[url_id] = {
+                    "error": f"Unsupported netloc: {parsed_url.netloc}"
+                }
+                err_msgs.append(
+                    "{" + f"{url_id}:Unsupported netloc {parsed_url.netloc}" + "}"
+                )
+                err_ids.append(url_id)
+                if log:
+                    log.error(
+                        "Unsupported netloc",
+                        url=target_url.url,
+                        netloc=parsed_url.netloc,
+                    )
+                continue
 
         await ses.refresh(target_url)
         if ok:

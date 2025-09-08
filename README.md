@@ -2,7 +2,7 @@
 
 ## 概要
 
-- コマンドによる価格情報取得、検索＆登録、アップデート。kakakuscraping-fastapiへの情報の送信（任意）。[external_search](https://github.com/gkjg8787/external_search)が必要。[kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)を使用（※必要なら）。
+- コマンドによる価格情報取得、検索＆登録、アップデート。kakakuscraping-fastapi への情報の送信（任意）。[external_search](https://github.com/gkjg8787/external_search)が必要。[kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)を使用（※必要なら）。
 
 ## 対応サイト
 
@@ -52,13 +52,16 @@
 
 - celery beat を使用すると定期的にアップデートすることができる。対象のファイルは tasks.py
 - サンプルとして compose_sample ディレクトリ に celery beat を動かす compose.yaml を置いた。このディレクトリ配下を README.md があるフォルダにコピーして使用する。
-- tasks.py の` "schedule": crontab(hour="14"),`を変更することで動作時間を変更可能。
+- settings.py の設定
+  - `AUTO_UPDATE_OPTIONS`の`"schedule"`を変更することで動作時間を変更可能。または直接 tasks.py の` "schedule": crontab(hour="14"),`を変更することで動作時間を変更可能。
 - compose_sample 配下の compose.yaml を使用する際は一度 search2kakaku だけを起動してコンテナに入り DB を作る必要がある。<br>コンテナに入った後、<br>`cp tool/db_create.py .` <br>`python db_create.py`<br>DB 作成後、他のコンテナを起動する。
 
 ### kakakuscraping-fastapi への通知
 
 - 使用するには以下の設定が必要。
-  - search2kakaku/settings.py の送信先の API の URL 設定を書き換える。
+  - settings.py の設定
+    - `API_OPTIONS`の`post_data`、送信先の API の URL 設定を書き換える。
+    - `AUTO_UPDATE_OPTIONS`の`enable`を True にする。`notify_to_api`を True にする。
   - [kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)側の API も有効にする。
   - kakakuscraping-fastapi のアイテムにアップデート対象の URL を登録する必要がある。
     - 対象の API 側の docs から直接操作して登録する方法とコマンドを使用する方法がある。ここではコマンドのみ説明。

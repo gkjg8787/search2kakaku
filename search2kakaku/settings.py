@@ -28,3 +28,13 @@ UPDATE_URL_OPTIONS = {
         # "remove_duplicates": True,
     }
 }
+REDIS_OPTIONS = {
+    "host": "redis",
+    "port": 6379,
+    "db": 0,
+}
+AUTO_UPDATE_OPTIONS = {
+    "enable": True,
+    "schedule": {"hour": 14},
+    "notify_to_api": False,
+}

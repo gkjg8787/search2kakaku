@@ -40,6 +40,18 @@ class UpdateURLOptions(BaseModel):
     request_options: UpdateRequestOptions
 
 
+class RedisOptions(BaseModel):
+    host: str
+    port: int
+    db: int
+
+
+class AutoUpdateOptions(BaseModel):
+    enable: bool = Field(default=True)
+    schedule: dict = Field(default_factory=dict)
+    notify_to_api: bool = Field(default=False)
+
+
 def to_lower_keys(obj):
     if isinstance(obj, dict):
         # 新しい辞書を構築し、各キーを小文字に変換
@@ -74,3 +86,13 @@ def get_log_options():
 def get_update_url_options():
     lower_key_dict = to_lower_keys(settings.UPDATE_URL_OPTIONS)
     return UpdateURLOptions(**lower_key_dict)
+
+
+def get_redis_options():
+    lower_key_dict = to_lower_keys(settings.REDIS_OPTIONS)
+    return RedisOptions(**lower_key_dict)
+
+
+def get_auto_update_options():
+    lower_key_dict = to_lower_keys(settings.AUTO_UPDATE_OPTIONS)
+    return AutoUpdateOptions(**lower_key_dict)

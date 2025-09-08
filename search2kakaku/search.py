@@ -12,6 +12,10 @@ from app.sofmap import (
     models as sofmap_models,
 )
 from app.geo import web_scraper as geo_scraper
+from app.iosys import (
+    web_scraper as iosys_scraper,
+    models as iosys_models,
+)
 from domain.models.pricelog import pricelog as m_pricelog
 from databases.sql.pricelog import repository as db_repo
 from databases.sql import util as db_util
@@ -32,6 +36,7 @@ def set_argparse():
     )
     sofmap_argparse(subparsers=subparsers)
     geo_argparse(subparsers=subparsers)
+    iosys_argparse(subparsers=subparsers)
 
     return parser.parse_args()
 
@@ -53,6 +58,51 @@ def geo_argparse(subparsers):
         help="結果を標準出力",
     )
     geo_parser.add_argument(
+        "--without_registration",
+        action="store_true",
+        help="作成したURL含む、結果をデータベースに登録しない",
+    )
+
+
+def iosys_argparse(subparsers):
+    iosys_parser = subparsers.add_parser(
+        SiteName.IOSYS.value,
+        help="iosysを検索",
+    )
+    iosys_parser.add_argument(
+        "search_query",
+        nargs="?",
+        help="検索したいキーワード（例: 'iphone16e'）",
+    )
+    iosys_parser.add_argument(
+        "--condition",
+        type=str,
+        choices=["new", "used", "a"],
+        help="商品の状態。新品/未使用品、中古（全般）、ランク A",
+    )
+    iosys_parser.add_argument(
+        "--sort",
+        type=str,
+        choices=["l", "h", "vh", "vl"],
+        help="並び順。l:価格が安い順、h:価格が高い順、vh:在庫が多い順、vl:在庫が少ない順",
+    )
+    iosys_parser.add_argument(
+        "--min_price",
+        type=int,
+        help="下限価格",
+    )
+    iosys_parser.add_argument(
+        "--max_price",
+        type=int,
+        help="上限価格",
+    )
+    iosys_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="結果を標準出力",
+    )
+    iosys_parser.add_argument(
         "--without_registration",
         action="store_true",
         help="作成したURL含む、結果をデータベースに登録しない",
@@ -256,12 +306,54 @@ async def geo_command(argp, log):
     return
 
 
+async def iosys_command(argp, log):
+    async for ses in db_util.get_async_session():
+        if not argp.search_query:
+            log.info("paramter error. search_query is None")
+            return
+        log.info("get parameter", **vars(argp))
+        searchoptions = iosys_models.IosysSearchDataOptions(
+            condition=argp.condition,
+            sort=argp.sort,
+            min_price=argp.min_price,
+            max_price=argp.max_price,
+        )
+        searchreq = search_model.SearchRequest(
+            url="",
+            search_keyword=argp.search_query,
+            sitename=SiteName.IOSYS.value,
+            options=searchoptions.model_dump(exclude_none=True),
+        )
+
+        log.info("setting params", searchreq=searchreq.model_dump())
+        try:
+            ok, result = await iosys_scraper.download_with_api(
+                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
+            )
+            if not ok:
+                log.error("download failed", error_msg=result)
+                return
+        except Exception as e:
+            log.error(f"download error type:{type(e).__name__}, {e}")
+            return
+        log.info("download end")
+        if not isinstance(result, list):
+            log.error(f"result is not list. type :{type(result)}", result=result)
+            return
+        if not result:
+            log.info("data is None")
+            return
+        if argp.without_registration:
+            log.info("data is save")
+        if argp.verbose:
+            log.info(result, verbose=True)
+    return
+
+
 async def main():
     logger_config.configure_logger()
     run_id = str(uuid.uuid4())
-    log = structlog.get_logger(__name__).bind(
-        run_id=run_id, process_type="sofmap_search"
-    )
+    log = structlog.get_logger(__name__).bind(run_id=run_id, process_type="search")
 
     argp = set_argparse()
     create_db()
@@ -270,6 +362,8 @@ async def main():
             await sofmap_command(argp=argp, log=log)
         case SiteName.GEO.value:
             await geo_command(argp=argp, log=log)
+        case SiteName.IOSYS.value:
+            await iosys_command(argp=argp, log=log)
         case _:
             raise ValueError("invalid sitename")
 
