@@ -15,6 +15,9 @@ API_OPTIONS = {
     "get_data": {
         "url": "http://localhost:8060/api/",
         "timeout": 15.0,
+        "sofmap": {"timeout": 17.0},
+        "geo": {"timeout": 18.0},
+        "gemini": {"timeout": 300.0},
     },
     "post_data": {
         "url": "http://localhost:8000/api/",

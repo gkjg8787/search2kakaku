@@ -9,7 +9,7 @@ from .models.search import SearchRequest, SearchResponse
 from .models.error import ErrorMsg
 
 
-async def _get_search_info(apiurlname: APIURLName, data: dict, timeout: float):
+async def _get_search_result(apiurlname: APIURLName, data: dict, timeout: float):
     apiopt = APIPathOptionFactory().create(apiurlname=apiurlname)
     api_url = create_api_url(apiopt=apiopt)
     async with httpx.AsyncClient(timeout=timeout) as client:
@@ -40,8 +40,15 @@ async def _convert_to_response_model(data: dict, class_type: type):
     return True, result
 
 
+async def _get_request_timeout(sitename: str, top_key: str = "get_data") -> float:
+    get_data_opt = read_config.get_api_options().model_dump()[top_key]
+    if get_data_opt.get(sitename) and get_data_opt[sitename].get("timeout"):
+        return get_data_opt[sitename]["timeout"]
+    return get_data_opt["timeout"]
+
+
 async def get_search_info(inforeq: InfoRequest):
-    ok, msg, result = await _get_search_info(
+    ok, msg, result = await _get_search_result(
         apiurlname=APIURLName.SEARCH_INFO,
         data=inforeq.model_dump(mode="json"),
         timeout=read_config.get_api_options().get_data.timeout,
@@ -65,10 +72,10 @@ async def get_search_info(inforeq: InfoRequest):
 
 
 async def get_search(searchreq: SearchRequest):
-    ok, msg, result = await _get_search_info(
+    ok, msg, result = await _get_search_result(
         apiurlname=APIURLName.SEARCH,
         data=searchreq.model_dump(mode="json"),
-        timeout=read_config.get_api_options().get_data.timeout,
+        timeout=_get_request_timeout(sitename=searchreq.sitename),
     )
     if not ok:
         return ok, msg

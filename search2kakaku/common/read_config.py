@@ -3,9 +3,17 @@ from pydantic import BaseModel, Field
 import settings
 
 
+class APISiteOption(BaseModel):
+    timeout: float = Field(default=10.0)
+
+
 class APIOtpion(BaseModel):
     url: str
     timeout: float = Field(default=5.0)
+    sofmap: APISiteOption | None = Field(default=None)
+    geo: APISiteOption | None = Field(default=None)
+    iosys: APISiteOption | None = Field(default=None)
+    gemini: APISiteOption | None = Field(default=None)
 
 
 class APIOptions(BaseModel):
