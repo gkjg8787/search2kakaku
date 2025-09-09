@@ -1,5 +1,5 @@
 from enum import Enum, auto
-
+from typing import NamedTuple
 from pydantic import BaseModel, Field
 
 from domain.models.pricelog import pricelog as m_pricelog, command as p_command
@@ -18,6 +18,18 @@ class UpdateNotificationResult(BaseModel):
     updated_list: list[m_pricelog.URL] = Field(default_factory=list)
     added_list: list[m_pricelog.URL] = Field(default_factory=list)
     unregistered_list: list[str] = Field(default_factory=list)
+
+
+class RegisterURLByURL(NamedTuple):
+    url: str
+    sitename: str = ""
+    options: dict = {}
+
+
+class RegisterURLByID(NamedTuple):
+    url_id: int
+    sitename: str = ""
+    options: dict = {}
 
 
 def convert_to_urlnotification(
@@ -64,7 +76,7 @@ async def register_new_urls(ses, target_urls: list[m_pricelog.URL]):
         urlnoti = await urlnotirepo.get(
             command=nofi_cmd.URLNotificationGetCommand(url_id=url.id)
         )
-        if urlnoti and urlnoti[0].is_active:
+        if urlnoti:
             continue
         urlnoti = m_noti.URLNotification(url_id=url.id, is_active=True)
         results.append(urlnoti)
@@ -78,17 +90,18 @@ async def register_new_urls(ses, target_urls: list[m_pricelog.URL]):
     )
 
 
-async def register_file_urls(ses, target_urls: list[str]):
+async def register_urls(ses, target_urls: list[RegisterURLByURL]):
     urlnotirepo = n_repo.URLNotificationRepository(ses=ses)
     urlrepo = p_repo.URLRepository(ses=ses)
     added_urls_for_msg: list[m_pricelog.URL] = []
     add_and_update_notis_for_msg: list[m_pricelog.URL] = []
-    for target_url in target_urls:
-        db_url = await urlrepo.get(command=p_command.URLGetCommand(url=target_url))
+    for target in target_urls:
+        db_url = await urlrepo.get(command=p_command.URLGetCommand(url=target.url))
         if not db_url:
-            await urlrepo.save_all([m_pricelog.URL(url=target_url)])
-            db_url = await urlrepo.get(command=p_command.URLGetCommand(url=target_url))
+            await urlrepo.save_all([m_pricelog.URL(url=target.url)])
+            db_url = await urlrepo.get(command=p_command.URLGetCommand(url=target.url))
             added_urls_for_msg.append(db_url)
+
         db_urlnoti = await urlnotirepo.get(
             command=nofi_cmd.URLNotificationGetCommand(url_id=db_url.id)
         )
@@ -97,12 +110,19 @@ async def register_file_urls(ses, target_urls: list[str]):
                 [m_noti.URLNotification(url_id=db_url.id, is_active=True)]
             )
             add_and_update_notis_for_msg.append(db_url)
-            continue
-        if not db_urlnoti[0].is_active:
+        elif not db_urlnoti[0].is_active:
             db_urlnoti[0].is_active = True
             await urlnotirepo.save_all([db_urlnoti[0]])
             add_and_update_notis_for_msg.append(db_url)
-            continue
+
+        if target.sitename or target.options:
+            await ses.refresh(db_url)
+            await register_url_option_by_id(
+                ses=ses,
+                url_id=db_url.id,
+                sitename=target.sitename,
+                options=target.options,
+            )
 
     for url in add_and_update_notis_for_msg:
         await ses.refresh(url)
@@ -113,6 +133,56 @@ async def register_file_urls(ses, target_urls: list[str]):
         updated_list=add_and_update_notis_for_msg,
         added_list=added_urls_for_msg,
     )
+
+
+async def register_one_url(ses, target_url: RegisterURLByURL):
+    return await register_urls(ses=ses, target_urls=[target_url])
+
+
+async def register_url_by_id(ses, target: RegisterURLByID):
+    urlrepo = p_repo.URLRepository(ses=ses)
+    db_url = await urlrepo.get(command=p_command.URLGetCommand(id=target.url_id))
+    if not db_url:
+        return UpdateNotificationResult(
+            update_type=UpdateFuncType.ADD.name,
+            unregistered_list=[f"url_id:{target.url_id}"],
+        )
+    return await register_urls(
+        ses=ses,
+        target_urls=[
+            RegisterURLByURL(
+                url=db_url.url, sitename=target.sitename, options=target.options
+            )
+        ],
+    )
+
+
+async def register_url_option(ses, url: str, sitename: str, options: dict):
+    urlrepo = p_repo.URLRepository(ses=ses)
+    db_url = await urlrepo.get(command=p_command.URLGetCommand(url=url))
+    if not db_url:
+        return False
+    return await register_url_option_by_id(
+        ses=ses, url_id=db_url.id, sitename=sitename, options=options
+    )
+
+
+async def register_url_option_by_id(ses, url_id: int, sitename: str, options: dict):
+    urloptrepo = n_repo.URLUpdateParameterRepository(ses=ses)
+    db_urlopt = await urloptrepo.get(
+        command=nofi_cmd.URLUpdateParameterGetCommand(url_id=url_id)
+    )
+    if db_urlopt:
+        db_urlopt[0].sitename = sitename
+        db_urlopt[0].meta = options
+        await urloptrepo.save_all([db_urlopt[0]])
+        return True
+
+    urloption = m_noti.URLUpdateParameter(
+        url_id=url_id, sitename=sitename, meta=options
+    )
+    await urloptrepo.save_all([urloption])
+    return True
 
 
 async def inactive_file_urls(ses, target_urls: list[str]):
@@ -144,3 +214,18 @@ async def inactive_file_urls(ses, target_urls: list[str]):
         updated_list=updates_for_msg,
         unregistered_list=notfound_urls_for_msg,
     )
+
+
+async def inactive_url(ses, target_url: str):
+    return await inactive_file_urls(ses=ses, target_urls=[target_url])
+
+
+async def inactive_url_by_id(ses, url_id: int):
+    urlrepo = p_repo.URLRepository(ses=ses)
+    db_url = await urlrepo.get(command=p_command.URLGetCommand(id=url_id))
+    if not db_url:
+        return UpdateNotificationResult(
+            update_type=UpdateFuncType.REMOVE.name,
+            unregistered_list=[f"url_id:{url_id}"],
+        )
+    return await inactive_file_urls(ses=ses, target_urls=[db_url.url])

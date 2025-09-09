@@ -11,6 +11,7 @@ from databases.sql.notification import repository as n_repo
 from app.sofmap import web_scraper as sofmap_scraper, constants as sofmap_contains
 from app.geo import web_scraper as geo_scraper
 from app.iosys import web_scraper as iosys_scraper
+from app.gemini import web_scraper as gemini_scraper
 from common import read_config
 from app.activitylog.update import UpdateActivityLog
 from app.activitylog.util import is_updating_urls_or_sending_to_api
@@ -42,6 +43,7 @@ async def scraping_and_save_target_urls(
     activitylog_id = db_activitylog.id
     await up_activitylog.in_progress(id=activitylog_id)
 
+    urloptrepo = n_repo.URLUpdateParameterRepository(ses=ses)
     urlnotirepo = n_repo.URLNotificationRepository(ses=ses)
     target_urlnotis = await urlnotirepo.get(
         command=noti_cmd.URLNotificationGetCommand(is_active=True)
@@ -107,20 +109,33 @@ async def scraping_and_save_target_urls(
                     ses=ses, searchreq=searchreq, save_to_db=True
                 )
             case _:
-                target_results[url_id] = {
-                    "error": f"Unsupported netloc: {parsed_url.netloc}"
-                }
-                err_msgs.append(
-                    "{" + f"{url_id}:Unsupported netloc {parsed_url.netloc}" + "}"
+                db_urlopt = await urloptrepo.get(
+                    command=noti_cmd.URLUpdateParameterGetCommand(url_id=url_id)
                 )
-                err_ids.append(url_id)
-                if log:
-                    log.error(
-                        "Unsupported netloc",
-                        url=target_url.url,
-                        netloc=parsed_url.netloc,
+                if not db_urlopt or db_urlopt[0].sitename != SiteName.GEMINI.value:
+                    target_results[url_id] = {
+                        "error": f"Unsupported netloc: {parsed_url.netloc}"
+                    }
+                    err_msgs.append(
+                        "{" + f"{url_id}:Unsupported netloc {parsed_url.netloc}" + "}"
                     )
-                continue
+                    err_ids.append(url_id)
+                    if log:
+                        log.error(
+                            "Unsupported netloc",
+                            url=target_url.url,
+                            netloc=parsed_url.netloc,
+                        )
+                    continue
+                searchreq = search_models.SearchRequest(
+                    url=target_url.url,
+                    search_keyword="",
+                    sitename=SiteName.GEMINI.value,
+                    options=db_urlopt[0].meta,
+                )
+                ok, result = await gemini_scraper.download_with_api(
+                    ses=ses, searchreq=searchreq, save_to_db=True
+                )
 
         await ses.refresh(target_url)
         if ok:

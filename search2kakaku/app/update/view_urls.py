@@ -10,6 +10,8 @@ class ViewURLActive(BaseModel):
     id: int
     url: str
     is_active: bool | None = None
+    sitename: str | None = None
+    meta: dict | None = None
 
 
 class ViewURLActiveGetCommand(BaseModel):
@@ -17,6 +19,7 @@ class ViewURLActiveGetCommand(BaseModel):
     url: str | None = None
     is_active: bool | None = None
     excluding_none: bool = False
+    view_option: bool = False
 
 
 class ViewURLActiveRepository:
@@ -27,14 +30,32 @@ class ViewURLActiveRepository:
 
     async def get(self, command: ViewURLActiveGetCommand) -> list[ViewURLActive]:
         ses = self.session
-        stmt = (
-            select(m_pricelog.URL, m_noti.URLNotification)
-            .select_from(m_pricelog.URL)
-            .outerjoin(
-                m_noti.URLNotification,
-                m_pricelog.URL.id == m_noti.URLNotification.url_id,
+
+        if command.view_option:
+            stmt = (
+                select(
+                    m_pricelog.URL, m_noti.URLNotification, m_noti.URLUpdateParameter
+                )
+                .select_from(m_pricelog.URL)
+                .outerjoin(
+                    m_noti.URLNotification,
+                    m_pricelog.URL.id == m_noti.URLNotification.url_id,
+                )
+                .outerjoin(
+                    m_noti.URLUpdateParameter,
+                    m_pricelog.URL.id == m_noti.URLUpdateParameter.url_id,
+                )
             )
-        )
+        else:
+            stmt = (
+                select(m_pricelog.URL, m_noti.URLNotification)
+                .select_from(m_pricelog.URL)
+                .outerjoin(
+                    m_noti.URLNotification,
+                    m_pricelog.URL.id == m_noti.URLNotification.url_id,
+                )
+            )
+
         if command.id:
             stmt = stmt.where(m_pricelog.URL.id == command.id)
         if command.url:
@@ -58,28 +79,22 @@ class ViewURLActiveRepository:
     def _convert_db_to_viewurlactives(self, results) -> list[ViewURLActive]:
         new_results = []
         for r in results:
+            view_dict = {}
             for rr in r:
                 if isinstance(rr, m_pricelog.URL):
-                    db_url = rr
+                    view_dict["id"] = rr.id
+                    view_dict["url"] = rr.url
                     continue
                 if isinstance(rr, m_noti.URLNotification):
-                    db_noti = rr
+                    view_dict["is_active"] = rr.is_active
                     continue
-                else:
-                    db_noti = None
+                if isinstance(rr, m_noti.URLUpdateParameter):
+                    view_dict["sitename"] = rr.sitename
+                    view_dict["meta"] = rr.meta
                     continue
-            if db_url and db_noti:
-                new_results.append(
-                    ViewURLActive(
-                        id=db_url.id, url=db_url.url, is_active=db_noti.is_active
-                    )
-                )
-                continue
-            if db_url and not db_noti:
-                new_results.append(
-                    ViewURLActive(id=db_url.id, url=db_url.url, is_active=False)
-                )
-                continue
+            if not view_dict:
+                raise ValueError(f"invalid data, {r}")
+            new_results.append(ViewURLActive(**view_dict))
+            continue
 
-            ValueError("convert error. URL is None.")
         return new_results

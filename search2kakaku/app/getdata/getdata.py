@@ -75,7 +75,7 @@ async def get_search(searchreq: SearchRequest):
     ok, msg, result = await _get_search_result(
         apiurlname=APIURLName.SEARCH,
         data=searchreq.model_dump(mode="json"),
-        timeout=_get_request_timeout(sitename=searchreq.sitename),
+        timeout=await _get_request_timeout(sitename=searchreq.sitename),
     )
     if not ok:
         return ok, msg

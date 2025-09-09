@@ -1,6 +1,8 @@
 import asyncio
 import argparse
 import uuid
+import json
+from urllib.parse import urlparse
 
 import structlog
 
@@ -9,35 +11,95 @@ from databases.sql.pricelog import repository as p_repo
 from domain.models.pricelog import pricelog as m_pricelog
 from domain.models.notification import notification as m_noti
 from databases.sql import util as db_util
-from app.update.update_urls import (
-    UpdateFuncType,
-    UpdateNotificationResult,
-    inactive_all_urls,
-    inactive_file_urls,
-    register_all_urls,
-    register_new_urls,
-    register_file_urls,
-)
-from app.update import view_urls
+from app.update import update_urls, view_urls
+from app.gemini import models as gemini_models
 
 
 class CommandOrder:
     ADD = "add"
     REMOVE = "remove"
     VIEW = "view"
+    GEMINI = "gemini"
+
 
 class ViewTargetOrder:
     ALL = "all"
     ACTIVE = "active"
     INACTIVE = "inactive"
 
+
 def set_argparse():
     parser = argparse.ArgumentParser(
         description="URLをアップデート対象かどうか変更します。"
     )
-    subparsers = parser.add_subparsers(dest='command', help='利用可能なコマンド', required=True)
+    subparsers = parser.add_subparsers(
+        dest="command", help="利用可能なコマンド", required=True
+    )
+    add_opt_argparse(subparsers)
+    remove_opt_argparse(subparsers)
+    view_opt_argparse(subparsers)
+    gemini_opt_argparse(subparsers)
 
-    add_parser = subparsers.add_parser(CommandOrder.ADD, help="URLをアップデート対象にします。")
+    return parser.parse_args()
+
+
+def gemini_opt_argparse(subparsers):
+    gemini_parser = subparsers.add_parser(
+        CommandOrder.GEMINI,
+        help="GEMINI APIを使ったスクレイピングのオプションを設定します。",
+    )
+    gemini_parser.add_argument(
+        "--url_id",
+        type=int,
+        help="指定のURL_IDを対象にします。",
+        required=True,
+    )
+    gemini_parser.add_argument(
+        "--opt_sitename",
+        type=str,
+        help="オプション内のsitenameを指定します。ここで指定した名前は返却される情報内のsitenameに設定されます。",
+    )
+    gemini_parser.add_argument(
+        "--label",
+        type=str,
+        help="labelを指定します。指定したlabelが同じ場合はURLが違っていても同じパーサを使用します。",
+    )
+    gemini_parser.add_argument(
+        "--recreate",
+        action="store_true",
+        help="パーサの再作成を依頼します。すでに存在する場合は上書きされます。",
+    )
+    gemini_parser.add_argument(
+        "--selenium",
+        action="store_true",
+        help="URLのダウンロードにseleniumを使用するように設定します。",
+    )
+    gemini_parser.add_argument(
+        "--wait_css_selector",
+        type=str,
+        help="seleniumでページを取得する際に、指定したCSSセレクタが出現するまで待機するように設定します。",
+    )
+    gemini_parser.add_argument(
+        "--page_load_timeout",
+        type=int,
+        help="seleniumでページを取得する際のタイムアウト時間(秒)を設定します。",
+    )
+    gemini_parser.add_argument(
+        "--tag_wait_timeout",
+        type=int,
+        help="seleniumでページを取得する際に、指定したCSSセレクタが出現するまでの待機時間(秒)を設定します。",
+    )
+    gemini_parser.add_argument(
+        "--page_wait_time",
+        type=float,
+        help="seleniumでページを取得する際に、CSSセレクタを指定していない場合の待機時間(秒)を設定します。",
+    )
+
+
+def add_opt_argparse(subparsers):
+    add_parser = subparsers.add_parser(
+        CommandOrder.ADD, help="URLをアップデート対象にします。"
+    )
     add_target_group = add_parser.add_mutually_exclusive_group(required=True)
     add_target_group.add_argument(
         "--new",
@@ -54,13 +116,37 @@ def set_argparse():
         "--file",
         type=str,
         dest="file_path",  # args.file_path に格納される
-        help="ファイルのURLを対象にします。\n"
+        help="ファイルのURLを対象にします。\n"  # Note: The original had \n here, which is correct for a string literal representing a newline in Python.
         "URLリストが記述されたテキストファイルのパスを指定します。\n"
         "ファイルは1行に1つのURLを記述してください。\n"
         f"例: python {__file__} -f urls.txt",
     )
-    
-    remove_parser = subparsers.add_parser(CommandOrder.REMOVE, help="URLをアップデート対象から外します。")
+    add_target_group.add_argument(
+        "--url",
+        type=str,
+        help="URLをアップデート対象にします。",
+    )
+    add_target_group.add_argument(
+        "--url_id",
+        type=int,
+        help="URL_IDをアップデート対象にします。",
+    )
+    add_parser.add_argument(
+        "--sitename",
+        type=str,
+        help="URLのサイト名を指定します。",
+    )
+    add_parser.add_argument(
+        "--options",
+        type=str,
+        help='URLのオプションをJSON形式で指定します。例: \'{"key": "value"}\'.',
+    )
+
+
+def remove_opt_argparse(subparsers):
+    remove_parser = subparsers.add_parser(
+        CommandOrder.REMOVE, help="URLをアップデート対象から外します。"
+    )
     remove_target_group = remove_parser.add_mutually_exclusive_group(required=True)
     remove_target_group.add_argument(
         "--all",
@@ -71,27 +157,49 @@ def set_argparse():
         "-f",
         "--file",
         type=str,
-        dest="file_path",  # args.file_path に格納される
+        dest="file_path",
         help="ファイルのURLを対象にします。\n"
         "URLリストが記述されたテキストファイルのパスを指定します。\n"
         "ファイルは1行に1つのURLを記述してください。\n"
         f"例: python {__file__} -f urls.txt",
     )
+    remove_target_group.add_argument(
+        "--url",
+        type=str,
+        help="URLをアップデート対象から外します。",
+    )
+    remove_target_group.add_argument(
+        "--url_id",
+        type=int,
+        help="URL_IDをアップデート対象から外します。",
+    )
 
-    view_parser = subparsers.add_parser(CommandOrder.VIEW, help="URLのアップデート対象情報を表示します。")
-    VIEW_TARGET_LIST = [ViewTargetOrder.ALL, ViewTargetOrder.ACTIVE, ViewTargetOrder.INACTIVE]
+
+def view_opt_argparse(subparsers):
+    view_parser = subparsers.add_parser(
+        CommandOrder.VIEW, help="URLのアップデート対象情報を表示します。"
+    )
+    VIEW_TARGET_LIST = [
+        ViewTargetOrder.ALL,
+        ViewTargetOrder.ACTIVE,
+        ViewTargetOrder.INACTIVE,
+    ]
     view_parser.add_argument(
         "--target",
         type=lambda s: str(s).lower(),
         choices=VIEW_TARGET_LIST,
         default=ViewTargetOrder.ALL,
-        help=f"アップデート対象、対象外を表示:{",".join(VIEW_TARGET_LIST)}"
+        help=f"アップデート対象、対象外を表示:{",".join(VIEW_TARGET_LIST)}",
+    )
+    view_parser.add_argument(
+        "--url_option",
+        action="store_true",
+        help="URLオプションを表示します。",
     )
 
-    return parser.parse_args()
 
-def create_result_message(result: UpdateNotificationResult) -> str:
-    if result.update_type == UpdateFuncType.REMOVE.name:
+def create_result_message(result: update_urls.UpdateNotificationResult) -> str:
+    if result.update_type == update_urls.UpdateFuncType.REMOVE.name:
         msg = "以下のURLを全てUpdate対象から外しました。\n"
     else:
         msg = "以下のURLを全てUpdate対象にしました。\n"
@@ -110,7 +218,8 @@ def create_result_message(result: UpdateNotificationResult) -> str:
         msg = msg + f"{url.id} : {url.url}\n"
     return msg
 
-def get_target_urls_in_file(file_path :str):
+
+def get_target_urls_in_file(file_path: str):
     with open(file_path, "r") as f:
         target_urls = [
             line.strip()
@@ -120,11 +229,33 @@ def get_target_urls_in_file(file_path :str):
         return target_urls
     return []
 
+
 async def get_target_db_urls(ses):
     urlrepo = p_repo.URLRepository(ses=ses)
     return await urlrepo.get_all()
 
+
 async def start_add_command(ses, argp, log):
+    if argp.sitename:
+        sitename = argp.sitename
+    else:
+        sitename = ""
+    if argp.options:
+        try:
+            options = json.loads(argp.options)
+            if not isinstance(options, dict):
+                raise ValueError("options is not dict")
+            gemini_models.AskGeminiOptions(**options)
+        except Exception as e:
+            log.error(
+                f"Invalid JSON format for options",
+                options=argp.options,
+                error=str(e),
+            )
+            return
+    else:
+        options = {}
+
     if argp.file_path:
         target_urls = get_target_urls_in_file(argp.file_path)
         if not target_urls:
@@ -133,13 +264,46 @@ async def start_add_command(ses, argp, log):
                 file_path=argp.file_path,
             )
             return
-        result = await register_file_urls(ses=ses, target_urls=target_urls)
+
+        target_url_infos = [
+            update_urls.RegisterURLByURL(url=url, sitename=sitename, options=options)
+            for url in target_urls
+        ]
+        result = await update_urls.register_urls(ses=ses, target_urls=target_url_infos)
         log.info(
-        create_result_message(result),
-        order_type="add",
-        target="file",
-        file_path=argp.file_path,
-    )
+            create_result_message(result),
+            order_type="add",
+            target="file",
+            file_path=argp.file_path,
+        )
+        return
+    elif argp.url:
+        result = await update_urls.register_one_url(
+            ses=ses,
+            target_url=update_urls.RegisterURLByURL(
+                url=argp.url, sitename=sitename, options=options
+            ),
+        )
+        log.info(
+            create_result_message(result),
+            order_type="add",
+            target="url",
+            url=argp.url,
+        )
+        return
+    elif argp.url_id:
+        result = await update_urls.register_url_by_id(
+            ses=ses,
+            target=update_urls.RegisterURLByID(
+                url_id=argp.url_id, sitename=sitename, options=options
+            ),
+        )
+        log.info(
+            create_result_message(result),
+            order_type="add",
+            target="url_id",
+            url_id=argp.url_id,
+        )
         return
     else:
         target_db_urls = await get_target_db_urls(ses=ses)
@@ -147,14 +311,19 @@ async def start_add_command(ses, argp, log):
             log.error("not exist urls in database")
             return
         if argp.all:
-            result = await register_all_urls(ses=ses, target_urls=target_db_urls)
+            result = await update_urls.register_all_urls(
+                ses=ses, target_urls=target_db_urls
+            )
             log.info(create_result_message(result), order_type="add", target="all")
             return
-        if  argp.new:
-            result = await register_new_urls(ses=ses, target_urls=target_db_urls)
+        if argp.new:
+            result = await update_urls.register_new_urls(
+                ses=ses, target_urls=target_db_urls
+            )
             log.info(create_result_message(result), order_type="add", target="new")
             return
         return
+
 
 async def start_remove_command(ses, argp, log):
     if argp.file_path:
@@ -165,12 +334,30 @@ async def start_remove_command(ses, argp, log):
                 file_path=argp.file_path,
             )
             return
-        result = await inactive_file_urls(ses=ses, target_urls=target_urls)
+        result = await update_urls.inactive_file_urls(ses=ses, target_urls=target_urls)
         log.info(
             create_result_message(result),
             order_type="remove",
             target="file",
             file_path=argp.file_path,
+        )
+        return
+    elif argp.url:
+        result = await update_urls.inactive_url(ses=ses, target_url=argp.url)
+        log.info(
+            create_result_message(result),
+            order_type="remove",
+            target="url",
+            url=argp.url,
+        )
+        return
+    elif argp.url_id:
+        result = await update_urls.inactive_url_by_id(ses=ses, url_id=argp.url_id)
+        log.info(
+            create_result_message(result),
+            order_type="remove",
+            target="url_id",
+            url_id=argp.url_id,
         )
         return
     else:
@@ -179,38 +366,91 @@ async def start_remove_command(ses, argp, log):
             log.error("not exist urls in database")
             return
         if argp.all:
-            result = await inactive_all_urls(ses=ses, target_urls=target_db_urls)
-            log.info(
-                create_result_message(result), order_type="remove", target="all"
+            result = await update_urls.inactive_all_urls(
+                ses=ses, target_urls=target_db_urls
             )
+            log.info(create_result_message(result), order_type="remove", target="all")
             return
         return
 
-def create_view_result_message(result : list[view_urls.ViewURLActive]) -> str:
+
+def create_view_result_message(result: list[view_urls.ViewURLActive]) -> str:
     if result:
-        new_result :list = []
+        new_result: list = []
         for r in result:
-            new_result.append(r.model_dump())
+            new_result.append(r.model_dump(exclude_none=True))
         return str(new_result)
     return "no results"
 
+
 async def start_view_command(ses, argp, log):
     viewrepo = view_urls.ViewURLActiveRepository(ses=ses)
+
     match argp.target:
         case ViewTargetOrder.ALL:
-            result = await viewrepo.get(command=view_urls.ViewURLActiveGetCommand())
+            result = await viewrepo.get(
+                command=view_urls.ViewURLActiveGetCommand(view_option=argp.url_option)
+            )
             if result:
                 log.info(create_view_result_message(result))
             return
         case ViewTargetOrder.ACTIVE:
-            result = await viewrepo.get(command=view_urls.ViewURLActiveGetCommand(is_active=True))
+            result = await viewrepo.get(
+                command=view_urls.ViewURLActiveGetCommand(
+                    is_active=True, view_option=argp.url_option
+                )
+            )
             log.info(create_view_result_message(result))
             return
         case ViewTargetOrder.INACTIVE:
-            result = await viewrepo.get(command=view_urls.ViewURLActiveGetCommand(is_active=False, excluding_none=True))
+            result = await viewrepo.get(
+                command=view_urls.ViewURLActiveGetCommand(
+                    is_active=False, excluding_none=True, view_option=argp.url_option
+                )
+            )
             log.info(create_view_result_message(result))
             return
     return
+
+
+async def start_gemini_command(ses, argp, log):
+    gemini_options = {}
+
+    if argp.opt_sitename:
+        if argp.opt_sitename.strip():
+            gemini_options["sitename"] = argp.opt_sitename.strip()
+        else:
+            gemini_options["sitename"] = urlparse(argp.url).netloc
+    if argp.label:
+        if argp.label.strip():
+            gemini_options["label"] = argp.label.strip()
+        else:
+            gemini_options["label"] = urlparse(argp.url).netloc
+
+    if argp.recreate:
+        gemini_options["recreate_parser"] = True
+
+    if argp.selenium:
+        gemini_options["selenium"] = {"use_selenium": True}
+        if argp.wait_css_selector:
+            gemini_options["selenium"]["wait_css_selector"] = argp.wait_css_selector
+        if argp.page_load_timeout:
+            gemini_options["selenium"]["page_load_timeout"] = argp.page_load_timeout
+        if argp.tag_wait_timeout:
+            gemini_options["selenium"]["tag_wait_timeout"] = argp.tag_wait_timeout
+        if argp.page_wait_time:
+            gemini_options["selenium"]["page_wait_time"] = argp.page_wait_time
+    if not gemini_options:
+        log.error("no options specified")
+        return
+    if not await update_urls.register_url_option(
+        ses=ses, url=argp.url, sitename=argp.opt_sitename, options=gemini_options
+    ):
+        log.error("failed register gemini options", url=argp.url)
+        return
+    log.info("succeeded register gemini options", url=argp.url, options=gemini_options)
+    return
+
 
 async def main():
     logger_config.configure_logger()
@@ -220,6 +460,7 @@ async def main():
     )
 
     argp = set_argparse()
+    log.info("parse params", args=argp)
 
     db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
@@ -233,6 +474,10 @@ async def main():
             case CommandOrder.VIEW:
                 await start_view_command(ses=ses, argp=argp, log=log)
                 return
-            
+            case CommandOrder.GEMINI:
+                await start_gemini_command(ses=ses, argp=argp, log=log)
+                return
+
+
 if __name__ == "__main__":
     asyncio.run(main())

@@ -5,6 +5,7 @@ class SiteName(AutoLowerName):
     SOFMAP = auto()
     GEO = auto()
     IOSYS = auto()
+    GEMINI = auto()
 
 
 class SupportDomain(Enum):
