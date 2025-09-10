@@ -18,6 +18,7 @@ def set_argparse():
     parser = argparse.ArgumentParser(
         description="アップデート対象のURLを取得しログに登録します。"
     )
+    parser.add_argument("--url_id", type=int, help="単一のurl_idを指定する")
     return parser.parse_args()
 
 
@@ -31,7 +32,7 @@ async def main():
     db_util.create_db_and_tables()
     async for ses in db_util.get_async_session():
         await scraping_urls.scraping_and_save_target_urls(
-            ses=ses, log=log, caller_type=CALLER_TYPE
+            ses=ses, log=log, caller_type=CALLER_TYPE, url_id=argp.url_id
         )
 
 

@@ -69,20 +69,16 @@ class URLNotificationRepository(m_repository.IURLNotificationRepository):
     async def get(
         self, command: m_command.URLNotificationGetCommand
     ) -> list[m_notif.URLNotification]:
+        stmt = select(m_notif.URLNotification)
         if command.url_id:
-            db_urlnoti = await self._get_by_url_id(url_id=command.url_id)
-            if not db_urlnoti:
-                return []
-            return [db_urlnoti]
+            stmt = stmt.where(m_notif.URLNotification.url_id == command.url_id)
         if command.is_active is not None:
-            result = await self.session.execute(
-                select(m_notif.URLNotification).where(
-                    m_notif.URLNotification.is_active == command.is_active
-                )
-            )
-            db_urlnotis = result.scalars()
-            if db_urlnotis:
-                return db_urlnotis.all()
+            stmt = stmt.where(m_notif.URLNotification.is_active == command.is_active)
+
+        result = await self.session.execute(stmt)
+        db_urlnotis = result.scalars()
+        if db_urlnotis:
+            return db_urlnotis.all()
         return []
 
 

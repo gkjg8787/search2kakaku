@@ -26,7 +26,7 @@ def is_a_sofmap(url: str):
 
 
 async def scraping_and_save_target_urls(
-    ses: AsyncSession, log=None, caller_type: str = None
+    ses: AsyncSession, log=None, caller_type: str = None, url_id: int = None
 ):
     up_activitylog = UpdateActivityLog(ses=ses)
     if await is_updating_urls_or_sending_to_api(updateactlog=up_activitylog):
@@ -45,11 +45,16 @@ async def scraping_and_save_target_urls(
 
     urloptrepo = n_repo.URLUpdateParameterRepository(ses=ses)
     urlnotirepo = n_repo.URLNotificationRepository(ses=ses)
-    target_urlnotis = await urlnotirepo.get(
-        command=noti_cmd.URLNotificationGetCommand(is_active=True)
-    )
+
+    command = noti_cmd.URLNotificationGetCommand(is_active=True)
+    if url_id:
+        command.url_id = url_id
+
+    target_urlnotis = await urlnotirepo.get(command=command)
     if not target_urlnotis:
         msg = "No target urls"
+        if url_id:
+            msg = f"No active target url for url_id: {url_id}"
         await up_activitylog.canceled(id=activitylog_id, error_msg=msg)
         if log:
             log.warning(msg)
