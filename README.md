@@ -1,5 +1,22 @@
 # Search API to kakakuscraping API
 
+## 目次
+
+- [概要](#概要)
+- [対応サイト](#対応サイト)
+- [前提](#前提)
+- [起動](#起動)
+- [使い方](#使い方)
+  - [`search.py` - 商品の検索と価格情報の初期登録](#search.py---商品の検索と価格情報の初期登録)
+  - [`register_for_updates.py` - 自動更新対象の管理](#register_for_updates.py---自動更新対象の管理)
+  - [`update_urls.py` - 価格情報の更新](#update_urls.py---価格情報の更新)
+  - [`send_to_api.py` - `kakakuscraping-fastapi`との連携](#send_to_api.py---kakakuscraping-fastapiとの連携)
+  - [`view_log.py` - コマンドログの表示](#view_log.py---コマンドログの表示)
+- [celery beat による自動アップデート](#celery-beat-による自動アップデート)
+- [kakakuscraping-fastapi への通知](#kakakuscraping-fastapi-への通知)
+- [その他](#その他)
+- [Gemini API の使用例](#gemini-api-の使用例)
+
 ## 概要
 
 - コマンドによる価格情報取得、検索＆登録、アップデート。kakakuscraping-fastapi への情報の送信（任意）。[external_search](https://github.com/gkjg8787/external_search)が必要。[kakakuscraping-fastapi](https://github.com/gkjg8787/kakakuscraping-fastapi)を使用（※必要なら）。
@@ -167,7 +184,7 @@
 - DB について
   - settings.py に非同期(a_sync)と同期(sync)の設定があるが同期は DB 作成の時に使用。それ以外のアクセスは基本的に非同期のみを使用している。
 
-### 使用例
+### Gemini API の使用例
 
 - kakakuscraping-fastapi にアイテムと URL を追加<br>`python send_to_api.py create_item --name "マリオカートワールド" --url "https://www.biccamera.com/bc/category/001/210/?q=%83}%83%8A%83I%83J%81[%83g%83%8F%81[%83%8B%83h%20%83\%83t%83g"`
 - gemini 用オプションの作成<br>
@@ -197,4 +214,20 @@ Successfully created GEMINI options and saved to biccamera_options.json
 - update 対象に URL を追加<br>`python register_for_updates.py add --url "https://www.biccamera.com/bc/category/001/210/?q=%83}%83%8A%83I%83J%81[%83g%83%8F%81[%83%8B%83h%20%83\%83t%83g" --sitename gemini --options_from biccamera_options.json`
 
 - 価格情報を取得<br>`python update_urls.py`<br>※gemini による新規のパーサを作成する場合は時間がかかります。またパーサの作成に失敗する場合もあります。その場合は何度かやり直す必要があります。
+- 価格情報を kakakuscraping-fastapi に送信<br>`python send_to_api.py send_log`
+
+### Geo の登録例
+
+- 検索してログを取得<br>`python search.py geo "マリオカートワールド"`
+- update 対象に登録<br>`python register_for_updates.py add --new`
+- 登録された URL を確認<br>`python register_for_updates.py view`
+  - こんな感じの情報が出てくる
+
+```
+ [{'id': 3, 'url': 'https://ec.geo-online.co.jp/shop/goods/search.aspx?search=x&keyword=%83%7D%83%8A%83I%83J%81%5B%83g%83%8F%81%5B%83%8B%83h&submit1=%91%97%90M'}]
+```
+
+- kakakuscraping-fastapi に URL を追加<br>`python send_to_api.py add_url --item_id 1 --url " https://ec.geo-online.co.jp/shop
+/goods/search.aspx?search=x&keyword=%83%7D%83%8A%83I%83J%81%5B%83g%83%8F%81%5B%83%8B%83h&submit1=%91%97%90M"`
+
 - 価格情報を kakakuscraping-fastapi に送信<br>`python send_to_api.py send_log`
