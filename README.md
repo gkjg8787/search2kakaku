@@ -16,6 +16,7 @@
 - [kakakuscraping-fastapi への通知](#kakakuscraping-fastapi-への通知)
 - [その他](#その他)
 - [Gemini API の使用例](#gemini-api-の使用例)
+- [Geo の登録例](#geo-の登録例)
 
 ## 概要
 
