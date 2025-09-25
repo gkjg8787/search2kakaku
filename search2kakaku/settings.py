@@ -29,7 +29,8 @@ UPDATE_URL_OPTIONS = {
     "request_options": {
         # "convert_to_direct_search": False,
         # "remove_duplicates": True,
-    }
+    },
+    "excution_strategy": "sequential",  # "parallel" or "sequential"
 }
 REDIS_OPTIONS = {
     "host": "redis",

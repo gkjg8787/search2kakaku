@@ -54,45 +54,16 @@ def gemini_opt_argparse(subparsers):
         help="指定のURL_IDを対象にします。",
         required=True,
     )
-    gemini_parser.add_argument(
-        "--opt_sitename",
+    opt_group = gemini_parser.add_mutually_exclusive_group()
+    opt_group.add_argument(
+        "--options",
         type=str,
-        help="オプション内のsitenameを指定します。ここで指定した名前は返却される情報内のsitenameに設定されます。",
+        help='URLのオプションをJSON形式で指定します。例: \'{"key": "value"}\'.',
     )
-    gemini_parser.add_argument(
-        "--label",
+    opt_group.add_argument(
+        "--options_from",
         type=str,
-        help="labelを指定します。指定したlabelが同じ場合はURLが違っていても同じパーサを使用します。",
-    )
-    gemini_parser.add_argument(
-        "--recreate",
-        action="store_true",
-        help="パーサの再作成を依頼します。すでに存在する場合は上書きされます。",
-    )
-    gemini_parser.add_argument(
-        "--selenium",
-        action="store_true",
-        help="URLのダウンロードにseleniumを使用するように設定します。",
-    )
-    gemini_parser.add_argument(
-        "--wait_css_selector",
-        type=str,
-        help="seleniumでページを取得する際に、指定したCSSセレクタが出現するまで待機するように設定します。",
-    )
-    gemini_parser.add_argument(
-        "--page_load_timeout",
-        type=int,
-        help="seleniumでページを取得する際のタイムアウト時間(秒)を設定します。",
-    )
-    gemini_parser.add_argument(
-        "--tag_wait_timeout",
-        type=int,
-        help="seleniumでページを取得する際に、指定したCSSセレクタが出現するまでの待機時間(秒)を設定します。",
-    )
-    gemini_parser.add_argument(
-        "--page_wait_time",
-        type=float,
-        help="seleniumでページを取得する際に、CSSセレクタを指定していない場合の待機時間(秒)を設定します。",
+        help="URLのオプションを指定ファイルから読み出します。",
     )
 
 
@@ -136,10 +107,16 @@ def add_opt_argparse(subparsers):
         type=str,
         help="URLのサイト名を指定します。",
     )
-    add_parser.add_argument(
+    opt_group = add_parser.add_mutually_exclusive_group()
+    opt_group.add_argument(
         "--options",
         type=str,
         help='URLのオプションをJSON形式で指定します。例: \'{"key": "value"}\'.',
+    )
+    opt_group.add_argument(
+        "--options_from",
+        type=str,
+        help="URLのオプションを指定ファイルから読み出します。",
     )
 
 
@@ -250,7 +227,21 @@ async def start_add_command(ses, argp, log):
             log.error(
                 f"Invalid JSON format for options",
                 options=argp.options,
-                error=str(e),
+                error=f"type:{type(e).__name__}, {e}",
+            )
+            return
+    elif argp.options_from:
+        try:
+            with open(argp.options_from, "r") as f:
+                options = json.load(f)
+            if not isinstance(options, dict):
+                raise ValueError("options is not dict")
+            gemini_models.AskGeminiOptions(**options)
+        except Exception as e:
+            log.error(
+                f"Failed to read or parse options from file",
+                file_path=argp.options_from,
+                error=f"type:{type(e).__name__}, {e}",
             )
             return
     else:
@@ -416,33 +407,35 @@ async def start_view_command(ses, argp, log):
 async def start_gemini_command(ses, argp, log):
     gemini_options = {}
 
-    if argp.opt_sitename:
-        if argp.opt_sitename.strip():
-            gemini_options["sitename"] = argp.opt_sitename.strip()
-        else:
-            gemini_options["sitename"] = urlparse(argp.url).netloc
-    if argp.label:
-        if argp.label.strip():
-            gemini_options["label"] = argp.label.strip()
-        else:
-            gemini_options["label"] = urlparse(argp.url).netloc
-
-    if argp.recreate:
-        gemini_options["recreate_parser"] = True
-
-    if argp.selenium:
-        gemini_options["selenium"] = {"use_selenium": True}
-        if argp.wait_css_selector:
-            gemini_options["selenium"]["wait_css_selector"] = argp.wait_css_selector
-        if argp.page_load_timeout:
-            gemini_options["selenium"]["page_load_timeout"] = argp.page_load_timeout
-        if argp.tag_wait_timeout:
-            gemini_options["selenium"]["tag_wait_timeout"] = argp.tag_wait_timeout
-        if argp.page_wait_time:
-            gemini_options["selenium"]["page_wait_time"] = argp.page_wait_time
-    if not gemini_options:
-        log.error("no options specified")
-        return
+    if argp.options:
+        try:
+            gemini_options = json.loads(argp.options)
+            if not isinstance(gemini_options, dict):
+                raise ValueError("options is not dict")
+            gemini_models.AskGeminiOptions(**gemini_options)
+        except Exception as e:
+            log.error(
+                f"Invalid JSON format for options",
+                options=argp.options,
+                error=f"type:{type(e).__name__}, {e}",
+            )
+            return
+    elif argp.options_from:
+        try:
+            with open(argp.options_from, "r") as f:
+                gemini_options = json.load(f)
+            if not isinstance(gemini_options, dict):
+                raise ValueError("options is not dict")
+            gemini_models.AskGeminiOptions(**gemini_options)
+        except Exception as e:
+            log.error(
+                f"Failed to read or parse options from file",
+                file_path=argp.options_from,
+                error=f"type:{type(e).__name__}, {e}",
+            )
+            return
+    else:
+        gemini_options = {}
     if not await update_urls.register_url_option(
         ses=ses, url=argp.url, sitename=argp.opt_sitename, options=gemini_options
     ):

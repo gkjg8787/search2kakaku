@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel, Field
 
 import settings
@@ -46,6 +47,7 @@ class UpdateRequestOptions(BaseModel):
 
 class UpdateURLOptions(BaseModel):
     request_options: UpdateRequestOptions
+    excution_strategy: Literal["parallel", "sequential"] = Field(default="sequential")
 
 
 class RedisOptions(BaseModel):

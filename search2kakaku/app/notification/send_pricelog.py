@@ -1,11 +1,12 @@
-import os
 from datetime import datetime, timezone, timedelta
 import uuid
+import asyncio
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.models.pricelog import pricelog as m_pricelog, command as p_cmd
+from databases.sql.util import get_async_session
 from databases.sql.pricelog import repository as p_repo
 from domain.models.notification import command as noti_cmd
 from databases.sql.notification import repository as n_repo
@@ -21,7 +22,7 @@ from .factory import APIPathOptionFactory
 from . import constants as nofi_const
 
 
-async def convert_pricelog_to_parseinfo(
+async def _convert_pricelog_to_parseinfo(
     ses: AsyncSession,
     pricelog_list: list[m_pricelog.PriceLog],
 ) -> ParseInfosUpdate:
@@ -49,11 +50,11 @@ async def convert_pricelog_to_parseinfo(
     return parseinfos
 
 
-async def send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog]):
+async def _send_to_api(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog]):
     apiopt = APIPathOptionFactory().create(apiurlname=APIURLName.UPDATE_PRICE)
     api_url = create_api_url(apiopt=apiopt)
     try:
-        parseinfos = await convert_pricelog_to_parseinfo(
+        parseinfos = await _convert_pricelog_to_parseinfo(
             ses=ses, pricelog_list=pricelog_list
         )
     except Exception as e:
@@ -120,6 +121,81 @@ async def get_new_start_date(upactivitylog: UpdateActivityLog):
     )
 
 
+async def _send_one_url_to_api(
+    url_id: int,
+    caller_type: str | None = None,
+    start_utc_date: datetime | None = None,
+    end_utc_date: datetime | None = None,
+    init_subinfo: dict | None = None,
+    log=None,
+):
+    async for ses in get_async_session():
+        upactlog = UpdateActivityLog(ses=ses)
+        urlrepo = p_repo.URLRepository(ses=ses)
+        pricelogrepo = p_repo.PriceLogRepository(ses=ses)
+        db_activitylog = await upactlog.create(
+            target_id=str(url_id),
+            target_table="URL",
+            activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
+            caller_type=caller_type,
+            subinfo=init_subinfo,
+        )
+        activitylog_id = db_activitylog.id
+        await upactlog.in_progress(id=activitylog_id)
+
+        urlinfo = await urlrepo.get(command=p_cmd.URLGetCommand(id=url_id))
+        if not urlinfo:
+            errmsg = "URL is not found"
+            await upactlog.canceled(id=activitylog_id, error_msg=errmsg)
+            return {
+                "url_id": url_id,
+                "ok": False,
+                "msg": errmsg,
+                "result_details": {"error": errmsg},
+            }
+
+        target_pricelogs = await pricelogrepo.get(
+            command=p_cmd.PriceLogGetCommand(
+                url=urlinfo.url,
+                start_utc_date=start_utc_date,
+                end_utc_date=end_utc_date,
+            )
+        )
+        if not target_pricelogs:
+            errmsg = "PriceLog is None"
+            await upactlog.canceled(id=activitylog_id, error_msg=errmsg)
+            if log:
+                log.warning("no length target_pricelogs, skip", url_id=url_id)
+            return {
+                "url_id": url_id,
+                "ok": False,
+                "msg": errmsg,
+                "result_details": {"error": errmsg},
+            }
+
+        result_details = {"update_pricelog_ids": [p.id for p in target_pricelogs]}
+        ok, msg = await _send_to_api(ses=ses, pricelog_list=target_pricelogs)
+        if ok:
+            await upactlog.completed(id=activitylog_id, add_subinfo=result_details)
+            if log:
+                log.info("send to api ... OK", url_id=url_id)
+            return {"url_id": url_id, "ok": True, "result_details": result_details}
+
+        await upactlog.failed(
+            id=activitylog_id, error_msg=msg, add_subinfo=result_details
+        )
+        if log:
+            log.error("send to api ... NG", url_id=url_id, error_msg=msg)
+
+        result_details["error"] = msg
+        return {
+            "url_id": url_id,
+            "ok": False,
+            "msg": msg,
+            "result_details": result_details,
+        }
+
+
 async def send_target_URLs_to_api(
     ses: AsyncSession,
     start_utc_date: datetime | None,
@@ -157,66 +233,30 @@ async def send_target_URLs_to_api(
         command=noti_cmd.URLNotificationGetCommand(is_active=True)
     )
     url_id_list = [urlnoti.id for urlnoti in urlnoti_list]
-    urlrepo = p_repo.URLRepository(ses=ses)
-    pricelogrepo = p_repo.PriceLogRepository(ses=ses)
+
+    tasks = [
+        _send_one_url_to_api(
+            url_id,
+            caller_type=caller_type,
+            start_utc_date=start_utc_date,
+            end_utc_date=end_utc_date,
+            init_subinfo=init_subinfo,
+            log=log,
+        )
+        for url_id in url_id_list
+    ]
+    results = await asyncio.gather(*tasks)
+
     target_results = {}
     err_msgs = []
     err_ids = []
-    for url_id in url_id_list:
-        db_activitylog = await upactlog.create(
-            target_id=url_id,
-            target_table="URL",
-            activity_type=nofi_const.SEND_LOG_ACTIVITY_TYPE,
-            caller_type=caller_type,
-            subinfo=init_subinfo,
-        )
-        activitylog_id = db_activitylog.id
-        await upactlog.in_progress(id=activitylog_id)
-
-        urlinfo = await urlrepo.get(command=p_cmd.URLGetCommand(id=url_id))
-        if not urlinfo:
-            errmsg = "URL is not found"
-            await upactlog.canceled(id=activitylog_id, error_msg=errmsg)
-            err_msgs.append("{" + f"{url_id}:{errmsg}" + "}")
-            target_results[url_id] = {"error": f"{errmsg}"}
-            continue
-        target_pricelogs = await pricelogrepo.get(
-            command=p_cmd.PriceLogGetCommand(
-                url=urlinfo.url,
-                start_utc_date=start_utc_date,
-                end_utc_date=end_utc_date,
-            )
-        )
-        if not target_pricelogs:
-            errmsg = "PriceLog is None"
-            await upactlog.canceled(id=activitylog_id, error_msg=errmsg)
-            err_msgs.append("{" + f"{url_id}:{errmsg}" + "}")
-            target_results[url_id] = {"error": f"{errmsg}"}
-
-            if log:
-                log.warning("no length target_pricelogs, skip", url_id=url_id)
-            continue
-        target_results[url_id] = {
-            "update_pricelog_ids": [p.id for p in target_pricelogs]
-        }
-        ok, msg = await send_to_api(ses=ses, pricelog_list=target_pricelogs)
-        if ok:
-            await upactlog.completed(
-                id=activitylog_id, add_subinfo=target_results[url_id]
-            )
-            if log:
-                log.info("send to api ... OK", url_id=url_id)
-            continue
-
-        await upactlog.failed(
-            id=activitylog_id, error_msg=msg, add_subinfo=target_results[url_id]
-        )
-        err_msgs.append("{" + f"{url_id}:{msg}" + "}")
-        target_results[url_id] |= {"error": f"{msg}"}
-        err_ids.append(url_id)
-        if log:
-            log.error("send to api ... NG", url_id=url_id, error_msg=msg)
-        continue
+    for res in results:
+        url_id = res["url_id"]
+        target_results[url_id] = res.get("result_details", {})
+        if not res["ok"]:
+            msg = res["msg"]
+            err_msgs.append("{" + f"{url_id}:{msg}" + "}")
+            err_ids.append(url_id)
 
     add_subinfo = {"target_results": target_results}
     if not err_msgs:
