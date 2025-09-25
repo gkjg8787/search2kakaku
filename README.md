@@ -6,8 +6,11 @@
 
 ## 対応サイト
 
-- sofmap
-- geo
+- external_search で対応できるサイトのリスト
+  - sofmap
+  - geo
+  - iosys
+  - その他(gemini によるパーサ作成)
 
 ## 前提
 
@@ -27,26 +30,114 @@
 
 - 基本は`search2kakaku`コンテナに入ってコマンドで操作する。<br>`docker compose exec -it search2kakaku bash`
 - 実行するディレクトリパスはコンテナ内の`/app/search2kakaku`を想定。
+- 各コマンドの詳細なオプションは `--help` を参照。
 
-- 検索と価格情報の登録
-  - `python search.py sofmap "keyword"` で情報取得、URL、価格ログのデータベース登録
-  - この時点ではアップデート対象にはならない。
-- アップデート対象情報の確認
-  - `python register_for_updates.py view` で URL のアップデート対象かどうかを確認可。`is_active:True` でアップデート対象
-- アップデート対象の登録
-  - 既に検索済み(search.py)をアップデート対象に新規登録<br>`python register_for_updates.py add --new`
-  - 検索(search.py)を使わず直接 URL をアップデート対象に登録
-    - 登録したい URL 一覧を一行一 URL のファイルを用意する。ファイル名は任意。例 urls.txt
-    - ファイルに書かれた URL を登録<br>`python register_for_updates.py add -f urls.txt`
-  - アップデート対象から URL を外す
-    - ファイルで設定
-      - 外したい URL 一覧を一行一 URL のファイルを用意する。ファイル名は任意。 例 urls.txt
-      - アップデート対象から除外<br>`python register_for_updates.py remove -f urls.txt`
-    - 全て外す<br>`python register_for_updates.py remove --all`
-- アップデート対象の URL から価格情報を取得してデータベース登録<br>`python update_urls.py`
-  - 細かい設定は[kakakuscraping-fastapi への通知](https://github.com/gkjg8787/search2kakaku#kakakuscraping-fastapi-への通知)を参照
-- 設定した kakakuscraping の API へログデータを送信<br>`python send_to_api.py send_log`
-- ※詳細オプションは `--help` を参照
+---
+
+### `search.py` - 商品の検索と価格情報の初期登録
+
+各サイトをキーワードで検索し、取得した商品情報（URL、価格など）をデータベースに登録します。この時点では、自動更新の対象にはなりません。
+
+**書式:**
+`python search.py [サイト名] "キーワード" [オプション]`
+
+**対応サイトと主なオプション:**
+
+- **`sofmap`**
+  - `-a, --akiba`: 秋葉原の店舗(`a.sofmap.com`)を検索対象にします。
+  - `-ca, --category`: カテゴリを指定します (例: 'PC パーツ')。
+  - `--categorylist`: 指定可能なカテゴリの一覧を表示します。
+  - `-co, --condition`: 商品状態を指定します (`NEW`, `USED`など)。
+- **`geo`**
+  - オプションは少なく、キーワード検索が主です。
+- **`iosys`**
+  - `--condition`: 商品状態を指定します (`new`, `used`, `a`)。
+  - `--sort`: 表示順を指定します (`l`: 価格が安い順, `h`: 高い順など)。
+  - `--min_price`, `--max_price`: 価格範囲を指定します。
+
+**共通オプション:**
+
+- `-v, --verbose`: 結果をコンソールに表示します。
+- `--without_registration`: データベースに登録せず、検索結果の表示のみ行います。
+
+---
+
+### `register_for_updates.py` - 自動更新対象の管理
+
+`search.py`で登録した商品や、直接指定した URL を自動更新の対象として管理します。
+
+**コマンド一覧:**
+
+- **`view` - 更新対象の確認**
+
+  - `python register_for_updates.py view`
+  - `--target [all|active|inactive]`: 表示する対象を絞り込みます（デフォルト: `all`）。
+  - `--url_option`: Gemini API 用のオプションも表示します。
+
+- **`add` - 更新対象への追加**
+
+  - `python register_for_updates.py add --new`: `search.py`で検索後、まだ更新対象になっていない URL をすべて追加します。
+  - `python register_for_updates.py add --all`: データベース内のすべての URL を更新対象にします。
+  - `python register_for_updates.py add --url <URL>`: 指定した URL を更新対象に追加します。
+  - `python register_for_updates.py add --url_id <ID>`: 指定した URL ID を更新対象に追加します。
+  - `python register_for_updates.py add -f <ファイル名>`: ファイルに記載された URL リストをまとめて追加します。
+
+- **`remove` - 更新対象からの除外**
+
+  - `python register_for_updates.py remove --all`: すべての URL を更新対象から外します。
+  - `python register_for_updates.py remove --url <URL>`: 指定した URL を更新対象から外します。
+  - `python register_for_updates.py remove --url_id <ID>`: 指定した URL ID を更新対象から外します。
+  - `python register_for_updates.py remove -f <ファイル名>`: ファイルに記載された URL リストをまとめて除外します。
+
+- **`gemini` - Gemini API 用オプションの設定**
+  - `python register_for_updates.py gemini --url_id <ID> --options '{"key": "value"}'`: 指定した URL ID に対して、スクレイピング時に使用する Gemini API のオプションを JSON 形式で設定します。
+  - `--options_from <ファイル名>`でファイルからオプションを読み込むことも可能です。
+  - **Note:** `--options`や`--options_from`で指定する JSON ファイルは、`create_gemini_options.py`スクリプトを使って対話的に作成できます。<br>`python create_gemini_options.py -o my_options.json --view`<br>このスクリプトは、external_search の gemini api オプションの設定を対話形式で案内し、ファイルに保存します。
+
+---
+
+### `update_urls.py` - 価格情報の更新
+
+`register_for_updates.py`で更新対象に設定されている URL の価格情報を取得し、データベースに保存します。
+
+- `python update_urls.py`: 更新対象になっているすべての URL の価格情報を更新します。
+- `python update_urls.py --url_id <ID>`: 指定した URL ID の価格情報のみを更新します。
+
+---
+
+### `send_to_api.py` - `kakakuscraping-fastapi`との連携
+
+`kakakuscraping-fastapi`へ価格ログを送信したり、アイテム情報を操作したりします。
+
+**コマンド一覧:**
+
+- **`send_log` - 価格ログの送信**
+
+  - `python send_to_api.py send_log`
+  - `-sjd`, `-sud`などでログの開始日時を指定可能です。
+
+- **`create_item` - 新規アイテムの作成**
+
+  - `python send_to_api.py create_item --name "アイテム名" --url "URL1" "URL2"`
+
+- **`add_url` - 既存アイテムへの URL 追加**
+
+  - `python send_to_api.py add_url --item_id <アイテムID> --url "URL"`
+
+- **`get_item` - アイテム情報の取得**
+  - `python send_to_api.py get_item --url "URL"`: 指定 URL が登録されているアイテムの情報を取得します。
+
+---
+
+### `view_log.py` - コマンドログの表示
+
+`application.log`に記録された JSON 形式のログを見やすく表示します。
+
+- `python view_log.py`: ログを表示します。
+- `-f <ファイル名>`: 表示するログファイルを指定します。
+- `--head <行数>`, `--tail <行数>`: 先頭または末尾から指定行数のみ表示します。
+- `--key <キー>`: 指定したキーを含むログのみ表示します (複数指定は OR 条件)。
+- `--search <キー:値>`: 指定したキーと値のペアに一致するログのみ表示します (複数指定は AND 条件)。
 
 ### celery beat による自動アップデート
 
@@ -72,7 +163,38 @@
 
 ### その他
 
-- コマンドログを表示。<br>`python view_log.py`
 - 取得した URL のログを見るには sqlite3 を使う。データベースのパスと名前は settings.py で設定したものを使用する。<br>`sqlite3 ../db/database.db "select * from pricelog"`
 - DB について
   - settings.py に非同期(a_sync)と同期(sync)の設定があるが同期は DB 作成の時に使用。それ以外のアクセスは基本的に非同期のみを使用している。
+
+### 使用例
+
+- kakakuscraping-fastapi にアイテムと URL を追加<br>`python send_to_api.py create_item --name "マリオカートワールド" --url "https://www.biccamera.com/bc/category/001/210/?q=%83}%83%8A%83I%83J%81[%83g%83%8F%81[%83%8B%83h%20%83\%83t%83g"`
+- gemini 用オプションの作成<br>
+
+```
+python create_gemini_options.py -o biccamera_options.json
+
+GEMINI API Options Creator
+Sitename: biccamera
+Label: biccamera_search
+Recreate Parser (y/n, default n):
+Exclude Script (y/n, default y):
+Compress Whitespace (y/n, default n):
+Download Type (httpx/selenium/nodriver, default httpx): nodriver
+Use Cookie (y/n, default n):
+Use Wait CSS Selector (y/n, default n): y
+CSS Selector: .bcs_listItem
+Timeout (seconds): 15
+On Error Action Type (raise/retry, default raise): retry
+On Error Max Retries : 3
+On Error Wait Time (seconds): 5
+On Error Check Exist Tag (CSS selector, default ''):
+Page Wait Time (seconds):
+Successfully created GEMINI options and saved to biccamera_options.json
+```
+
+- update 対象に URL を追加<br>`python register_for_updates.py add --url "https://www.biccamera.com/bc/category/001/210/?q=%83}%83%8A%83I%83J%81[%83g%83%8F%81[%83%8B%83h%20%83\%83t%83g" --sitename gemini --options_from biccamera_options.json`
+
+- 価格情報を取得<br>`python update_urls.py`<br>※gemini による新規のパーサを作成する場合は時間がかかります。またパーサの作成に失敗する場合もあります。その場合は何度かやり直す必要があります。
+- 価格情報を kakakuscraping-fastapi に送信<br>`python send_to_api.py send_log`
