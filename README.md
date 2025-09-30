@@ -94,11 +94,22 @@
 
 - **`add` - 更新対象への追加**
 
-  - `python register_for_updates.py add --new`: `search.py`で検索後、まだ更新対象になっていない URL をすべて追加します。
-  - `python register_for_updates.py add --all`: データベース内のすべての URL を更新対象にします。
-  - `python register_for_updates.py add --url <URL>`: 指定した URL を更新対象に追加します。
-  - `python register_for_updates.py add --url_id <ID>`: 指定した URL ID を更新対象に追加します。
-  - `python register_for_updates.py add -f <ファイル名>`: ファイルに記載された URL リストをまとめて追加します。
+  - `python register_for_updates.py add [--new|--all|--url <URL>|--url_id <ID>|-f <ファイル名>] --sitename <サイト名> [--options <Gemini API用オプション(JSON)>|--options_from <ファイル名>]`
+    - 対象 URL のオプション
+      - `--new`: 更新対象になっていない URL をすべて追加します。
+      - `--all`: データベース内のすべての URL を更新対象にします。
+      - `--url <URL>`: 指定した URL を更新対象に追加します。
+      - `--url_id <ID>`: 指定した URL ID を更新対象に追加します。
+      - `[-f|--file] <ファイル名>`: ファイルに記載された URL リストをまとめて追加します。
+    - サイト名
+      - `sofmap`
+      - `geo`
+      - `iosys`
+      - `gemini`
+    - Gemini API 用オプション
+      - `--options <JSON>`: Gemini API のオプションを JSON 形式で指定します。
+      - `--options_from <ファイル名>`: Gemini API のオプションをファイルから読み込みます。
+    - **Note:** `--options`や`--options_from`で指定する JSON ファイルは、`create_gemini_options.py`スクリプトを使って対話的に作成できます。<br>`python create_gemini_options.py -o my_options.json --view`<br>このスクリプトは、external_search の gemini api オプションの設定を対話形式で案内し、ファイルに保存します。
 
 - **`remove` - 更新対象からの除外**
 
@@ -106,11 +117,6 @@
   - `python register_for_updates.py remove --url <URL>`: 指定した URL を更新対象から外します。
   - `python register_for_updates.py remove --url_id <ID>`: 指定した URL ID を更新対象から外します。
   - `python register_for_updates.py remove -f <ファイル名>`: ファイルに記載された URL リストをまとめて除外します。
-
-- **`gemini` - Gemini API 用オプションの設定**
-  - `python register_for_updates.py gemini --url_id <ID> --options '{"key": "value"}'`: 指定した URL ID に対して、スクレイピング時に使用する Gemini API のオプションを JSON 形式で設定します。
-  - `--options_from <ファイル名>`でファイルからオプションを読み込むことも可能です。
-  - **Note:** `--options`や`--options_from`で指定する JSON ファイルは、`create_gemini_options.py`スクリプトを使って対話的に作成できます。<br>`python create_gemini_options.py -o my_options.json --view`<br>このスクリプトは、external_search の gemini api オプションの設定を対話形式で案内し、ファイルに保存します。
 
 ---
 

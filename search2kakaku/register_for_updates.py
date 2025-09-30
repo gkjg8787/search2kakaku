@@ -19,7 +19,6 @@ class CommandOrder:
     ADD = "add"
     REMOVE = "remove"
     VIEW = "view"
-    GEMINI = "gemini"
 
 
 class ViewTargetOrder:
@@ -38,33 +37,8 @@ def set_argparse():
     add_opt_argparse(subparsers)
     remove_opt_argparse(subparsers)
     view_opt_argparse(subparsers)
-    gemini_opt_argparse(subparsers)
 
     return parser.parse_args()
-
-
-def gemini_opt_argparse(subparsers):
-    gemini_parser = subparsers.add_parser(
-        CommandOrder.GEMINI,
-        help="GEMINI APIを使ったスクレイピングのオプションを設定します。",
-    )
-    gemini_parser.add_argument(
-        "--url_id",
-        type=int,
-        help="指定のURL_IDを対象にします。",
-        required=True,
-    )
-    opt_group = gemini_parser.add_mutually_exclusive_group()
-    opt_group.add_argument(
-        "--options",
-        type=str,
-        help='URLのオプションをJSON形式で指定します。例: \'{"key": "value"}\'.',
-    )
-    opt_group.add_argument(
-        "--options_from",
-        type=str,
-        help="URLのオプションを指定ファイルから読み出します。",
-    )
 
 
 def add_opt_argparse(subparsers):
@@ -404,47 +378,6 @@ async def start_view_command(ses, argp, log):
     return
 
 
-async def start_gemini_command(ses, argp, log):
-    gemini_options = {}
-
-    if argp.options:
-        try:
-            gemini_options = json.loads(argp.options)
-            if not isinstance(gemini_options, dict):
-                raise ValueError("options is not dict")
-            gemini_models.AskGeminiOptions(**gemini_options)
-        except Exception as e:
-            log.error(
-                f"Invalid JSON format for options",
-                options=argp.options,
-                error=f"type:{type(e).__name__}, {e}",
-            )
-            return
-    elif argp.options_from:
-        try:
-            with open(argp.options_from, "r") as f:
-                gemini_options = json.load(f)
-            if not isinstance(gemini_options, dict):
-                raise ValueError("options is not dict")
-            gemini_models.AskGeminiOptions(**gemini_options)
-        except Exception as e:
-            log.error(
-                f"Failed to read or parse options from file",
-                file_path=argp.options_from,
-                error=f"type:{type(e).__name__}, {e}",
-            )
-            return
-    else:
-        gemini_options = {}
-    if not await update_urls.register_url_option(
-        ses=ses, url=argp.url, sitename=argp.opt_sitename, options=gemini_options
-    ):
-        log.error("failed register gemini options", url=argp.url)
-        return
-    log.info("succeeded register gemini options", url=argp.url, options=gemini_options)
-    return
-
-
 async def main():
     logger_config.configure_logger()
     run_id = str(uuid.uuid4())
@@ -466,9 +399,6 @@ async def main():
                 return
             case CommandOrder.VIEW:
                 await start_view_command(ses=ses, argp=argp, log=log)
-                return
-            case CommandOrder.GEMINI:
-                await start_gemini_command(ses=ses, argp=argp, log=log)
                 return
 
 
