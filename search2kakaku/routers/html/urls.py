@@ -11,7 +11,7 @@ from common import read_template, read_config
 from app.update import view_urls
 from domain.schemas import schemas
 
-router = APIRouter(prefix="/url", tags=["url"])
+router = APIRouter(prefix="/url", tags=["view_urls"])
 templates = read_template.templates
 CALLER_TYPE = "html.url"
 

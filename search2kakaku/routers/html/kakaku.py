@@ -9,9 +9,9 @@ from databases.sql.util import get_async_session
 from common import read_template, read_config
 from app.update import view_urls
 from domain.schemas import schemas
-from app.notification import create_item, add_urls, get_items
+from app.notification import get_items
 
-router = APIRouter(prefix="/kakaku", tags=["kakaku"])
+router = APIRouter(prefix="/kakaku", tags=["view_kakaku"])
 templates = read_template.templates
 CALLER_TYPE = "html.kakaku"
 
