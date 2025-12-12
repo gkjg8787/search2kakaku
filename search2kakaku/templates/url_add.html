@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>URLの登録</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { max-width: 600px; margin: auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], textarea { width: 100%; padding: 8px; box-sizing: border-box; }
+        textarea { min-height: 150px; }
+        button { padding: 10px 15px; }
+        #message { margin-top: 15px; padding: 10px; border-radius: 5px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .button-like {
+            display: inline-block;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            background-color: #4CAF50; /* 緑色 */
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+        }
+
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
+            }
+            input[type="text"], textarea {
+                background-color: #2c2c2c;
+                color: #e0e0e0;
+                border: 1px solid #555;
+            }
+            button {
+                background-color: #333;
+                color: #e0e0e0;
+                border: 1px solid #555;
+            }
+
+            /* 登録ボタンのホバー時（ダークモード） */
+            #addUrlForm button[type="submit"]:hover {
+                background-color: #2b6cb0; /* 少し青みのあるハイライト */
+                color: #ffffff;
+                border-color: #2b6cb0;
+            }
+            a {
+                color: #8ab4f8;
+            }
+            .success {
+                background-color: #2a3d2f; color: #a7d7b8;
+            }
+            .error {
+                background-color: #442c2e; color: #f1b0b7;
+            }
+        }
+    </style>
+{% endblock %}
+{% block body %}
+    <div class="container">
+        <h1>URLの登録</h1>
+        <nav>
+            <a href="{{ url_for('url_list') }}" class="button-like">URL一覧へ</a>
+        </nav>
+
+        <form id="addUrlForm">
+            <div class="form-group">
+                <label for="url">追加するURL:</label>
+                <input type="text" id="url" name="url" value="{{ url if url }}" required>
+            </div>
+            <div class="form-group">
+                <label for="sitename">Sitename:</label>
+                <input type="text" id="sitename" name="sitename" value="{{ sitename if sitename }}">
+            </div>
+            <div class="form-group">
+                <label for="options">options (JSON形式):</label>
+                {% if options %}
+                <textarea id="options" name="options" placeholder='{"key": "value"}'>{{ options | tojson_japanese }}</textarea>
+                {% else %}
+                <textarea id="options" name="options" placeholder='{"key": "value"}'></textarea>
+                {% endif %}
+            </div>
+            <button type="submit">登録</button>
+        </form>
+            <div id="message"></div>
+            <div id="post-actions"></div>
+    </div>
+
+    <script>
+    document.getElementById('addUrlForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const url = document.getElementById('url').value;
+        const sitename = document.getElementById('sitename').value;
+        const optionsStr = document.getElementById('options').value;
+        const messageDiv = document.getElementById('message');
+        let options = {};
+
+        try {
+            if (optionsStr) {
+                options = JSON.parse(optionsStr);
+            }
+        } catch (e) {
+            messageDiv.textContent = 'optionsのJSON形式が正しくありません。';
+            messageDiv.className = 'error';
+            messageDiv.style.display = 'block';
+            return;
+        }
+
+        const response = await fetch(`{{ url_for('create_urls_api') }}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: [url], sitename: sitename, options: options })
+        });
+
+        if (response.ok) {
+            messageDiv.textContent = '登録されました。';
+            messageDiv.className = 'success';
+            const to_link = Boolean({{ to_link | tojson }});
+            if (to_link) {
+                // show button to continue registering this URL to kakakuscraping
+                const postActions = document.getElementById('post-actions');
+                postActions.innerHTML = '';
+                const kakakuBase = `{{ url_for('add_url_to_kakaku_form') }}`;
+                const link = document.createElement('a');
+                link.href = kakakuBase + '?url=' + encodeURIComponent(url);
+                link.className = 'button-like';
+                link.textContent = '続けてkakakuscrapingへ登録する';
+                postActions.appendChild(link);
+                // also keep the message visible but do not redirect
+            } else {
+                messageDiv.textContent += ' 2秒後に一覧ページへ遷移します。';
+                // redirect back to URL list after 2 seconds
+                setTimeout(() => {
+                    window.location.href = `{{ url_for('url_list') }}`;
+                }, 2000);
+            }
+        } else {
+            const errorData = await response.json();
+            messageDiv.textContent = `登録に失敗しました: ${errorData.detail || response.statusText}`;
+            messageDiv.className = 'error';
+        }
+        messageDiv.style.display = 'block';
+        window.scrollTo({
+            top: document.body.scrollHeight, // ドキュメント全体の高さ (最下部)
+            behavior: 'smooth' // スムーズなアニメーションでスクロール
+        });
+    });
+    </script>
+{% endblock %}

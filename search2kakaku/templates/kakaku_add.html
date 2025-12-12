@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>kakakuscrapingへのURL追加</title>
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 1rem auto;
+            background: #fff;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+        }
+        label {
+            display:block;
+            margin-bottom:0.25rem;
+            font-weight:600;
+            color:#333;
+        }
+        input[type="text"], input[type="number"], select, textarea {
+            width:100%;
+            padding:8px 10px;
+            border:1px solid #ced4da;
+            border-radius:4px;
+            box-sizing:border-box;
+            margin-bottom:0.75rem;
+        }
+        .muted {
+            color:#6c757d;
+            font-size:0.9rem;
+            margin-bottom:0.75rem;
+        }
+        .actions { display:flex; gap:0.5rem; align-items:center; }
+        .btn { padding:8px 12px; border-radius:4px; cursor:pointer; border:1px solid transparent; }
+        .btn-primary { background:#007bff; color:white; border-color:#007bff; }
+        .btn-secondary { background:#6c757d; color:white; border-color:#6c757d; }
+        .result { margin-top:1rem; padding:0.75rem; border-radius:4px; }
+        .result.success { background:#e6ffed; color:#0f5132; border:1px solid #b7ebc6; }
+        .result.error { background:#fff5f5; color:#721c24; border:1px solid #f5c2c7; }
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+            }
+            .form-container {
+                background: #1e1e1e;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            }
+            label, h1 {
+                color: #e0e0e0;
+            }
+            input[type="text"], input[type="number"], select, textarea {
+                background-color: #333;
+                color: #e0e0e0;
+                border-color: #555;
+            }
+            .muted {
+                color: #888;
+            }
+            a { color: #6cb2ff; }
+            .btn-primary { background:#0056b3; border-color:#0056b3; }
+            .btn-secondary { background:#495057; border-color:#495057; }
+            .result.success { background:#1c3d2f; color:#b7ebc6; border-color:#2f6b4a; }
+            .result.error { background:#412022; color:#f5c2c7; border-color:#5c2e33; }
+            input::placeholder {
+                color: #777;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="form-container">
+    <h1>kakakuscrapingへのURL追加</h1>
+
+    <div class="muted">追加対象 URLID: <strong>{{ url_id }}</strong></div>
+    <div class="muted">追加対象 URL: <a href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ url }}</a></div>
+
+    <form id="kakaku-add-form">
+        <label for="url-input">URL</label>
+        <input id="url-input" name="url" type="text" value="{{ url }}" required />
+
+        <label for="reg-type">登録タイプ</label>
+        <select id="reg-type" name="reg_type" aria-describedby="reg-type-desc">
+            <option value="create">アイテムの作成</option>
+            <option value="add">既存アイテムへURLの追加</option>
+        </select>
+        <div id="reg-type-desc" class="muted">登録タイプを選択すると、必要な入力欄が切り替わります。</div>
+
+        <div id="create-fields" style="display:block;">
+            <label for="item-name">アイテム名</label>
+            <input id="item-name" name="item_name" type="text" placeholder="例: スーパー便利トースター" />
+        </div>
+
+        <div id="add-fields" style="display:none;">
+            <label for="item-id">アイテムID</label>
+            <input id="item-id" name="item_id" type="number" min="1" placeholder="例: 123456" />
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn btn-primary">登録</button>
+            <a href="{{ url_for('kakaku_list') }}" class="btn btn-secondary">一覧へ戻る</a>
+        </div>
+    </form>
+
+    <div id="result" aria-live="polite"></div>
+</div>
+
+<script>
+(function () {
+    var regType = document.getElementById('reg-type');
+    var createFields = document.getElementById('create-fields');
+    var addFields = document.getElementById('add-fields');
+    var form = document.getElementById('kakaku-add-form');
+    var resultDiv = document.getElementById('result');
+
+    function showCreate() {
+        createFields.style.display = 'block';
+        addFields.style.display = 'none';
+    }
+    function showAdd() {
+        createFields.style.display = 'none';
+        addFields.style.display = 'block';
+    }
+
+    regType.addEventListener('change', function () {
+        if (regType.value === 'create') showCreate(); else showAdd();
+    });
+
+    function renderMessage(type, text) {
+        resultDiv.innerHTML = '';
+        var d = document.createElement('div');
+        d.className = 'result ' + (type === 'success' ? 'success' : 'error');
+        d.textContent = text;
+        resultDiv.appendChild(d);
+    }
+
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        resultDiv.innerHTML = '';
+        var url = document.getElementById('url-input').value.trim();
+        if (!url) { renderMessage('error', 'URLを入力してください。'); return; }
+
+        var selected = regType.value;
+        if (selected === 'create') {
+            var name = document.getElementById('item-name').value.trim();
+            if (!name) { renderMessage('error', 'アイテム名を入力してください。'); return; }
+            var payload = { name: name, urls: [url] };
+            fetch('{{ url_for('create_kakaku_item') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(async function (res) {
+                if (res.ok) {
+                    var data = await res.json();
+                    renderMessage('success', 'アイテム作成・URL追加に成功しました。 item_id=' + (data.item_id ?? ''));
+                } else {
+                    var txt = await res.text();
+                    renderMessage('error', '登録に失敗しました: ' + txt);
+                }
+            }).catch(function (err) {
+                renderMessage('error', '通信エラー: ' + String(err));
+            });
+
+        } else if (selected === 'add') {
+            var itemIdInput = document.getElementById('item-id').value.trim();
+            if (!itemIdInput) { renderMessage('error', 'アイテムIDを入力してください。'); return; }
+            var itemId = parseInt(itemIdInput, 10);
+            if (Number.isNaN(itemId) || itemId <= 0) { renderMessage('error', '有効なアイテムIDを入力してください。'); return; }
+            var payload = { item_id: itemId, urls: [url] };
+            fetch('{{ url_for('add_url_to_kakaku_item') }}', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(async function (res) {
+                if (res.ok) {
+                    var data = await res.json();
+                    renderMessage('success', '既存アイテムへURL追加に成功しました。 item_id=' + (data.item_id ?? ''));
+                } else {
+                    var txt = await res.text();
+                    renderMessage('error', '登録に失敗しました: ' + txt);
+                }
+            }).catch(function (err) {
+                renderMessage('error', '通信エラー: ' + String(err));
+            });
+
+        } else {
+            renderMessage('error', '不明な登録タイプです');
+        }
+    });
+})();
+</script>
+
+{% endblock %}

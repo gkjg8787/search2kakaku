@@ -1,5 +1,7 @@
 services:
   search2kakaku:
     build: ./
-    tty: true
     init: true
+    ports:
+      - "8120:8120"
+

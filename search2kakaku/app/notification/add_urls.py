@@ -2,11 +2,14 @@ import uuid
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from .util import create_api_url
 from .enums import APIURLName
 from .models import ItemsURLCreate, ItemsURLCreateResponse, URLActive
 from .factory import APIPathOptionFactory
 from app.activitylog.update import UpdateActivityLog
+from domain.schemas.schemas import KakakuURL
+
 
 ACTIVITY_TYPE = "add_urls_to_item_with_api"
 
@@ -82,15 +85,21 @@ async def add_urls_to_item_with_api(
 
     ok, msg, response = await send_urls_to_api_item(item_id=item_id, urls=urls)
     if response:
-        res_dict = {url.url: url.url_id for url in response.url_actives}
+        res_list = [
+            KakakuURL(url=url.url, url_id=url.url_id) for url in response.url_actives
+        ]
     else:
-        res_dict = {}
-    add_subinfo = {"response": res_dict}
+        res_list = []
+    add_subinfo = {"response": [r.model_dump() for r in res_list]}
     if ok:
         await upactlog.completed(id=taskactlog_id, add_subinfo=add_subinfo)
         if log:
-            log.info("add urls to item with api ... ok", response=res_dict)
+            log.info(
+                "add urls to item with api ... ok", response=add_subinfo["response"]
+            )
+        return {"item_id": item_id, "add_urls": res_list}
     else:
         await upactlog.failed(id=taskactlog_id, error_msg=msg)
         if log:
             log.error("add urls to item with api ... ng", error_msg=msg)
+        return {"error_msg": msg}

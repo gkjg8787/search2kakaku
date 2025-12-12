@@ -1,8 +1,9 @@
 services:
   search2kakaku:
     build: ./
-    tty: true
     init: true
+    ports:
+      - "8120:8120"
     volumes:
       - ./search2kakaku:/app/search2kakaku
       - ./data/db:/app/db

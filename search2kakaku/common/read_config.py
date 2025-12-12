@@ -62,6 +62,15 @@ class AutoUpdateOptions(BaseModel):
     notify_to_api: bool = Field(default=False)
 
 
+class KakakuOptions(BaseModel):
+    to_link: bool = Field(default=True)
+    base_url: str = Field(default="")
+
+
+class HTMLOptions(BaseModel):
+    kakaku: KakakuOptions
+
+
 def to_lower_keys(obj):
     if isinstance(obj, dict):
         # 新しい辞書を構築し、各キーを小文字に変換
@@ -106,3 +115,8 @@ def get_redis_options():
 def get_auto_update_options():
     lower_key_dict = to_lower_keys(settings.AUTO_UPDATE_OPTIONS)
     return AutoUpdateOptions(**lower_key_dict)
+
+
+def get_html_options():
+    lower_key_dict = to_lower_keys(settings.HTML_OPTIONS)
+    return HTMLOptions(**lower_key_dict)

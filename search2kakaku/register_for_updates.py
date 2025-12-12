@@ -8,8 +8,8 @@ import structlog
 
 from common import logger_config
 from databases.sql.pricelog import repository as p_repo
-from domain.models.pricelog import pricelog as m_pricelog
 from domain.models.notification import notification as m_noti
+from domain.schemas.schemas import UpdateNotificationResult
 from databases.sql import util as db_util
 from app.update import update_urls, view_urls
 from app.gemini import models as gemini_models
@@ -149,7 +149,7 @@ def view_opt_argparse(subparsers):
     )
 
 
-def create_result_message(result: update_urls.UpdateNotificationResult) -> str:
+def create_result_message(result: UpdateNotificationResult) -> str:
     if result.update_type == update_urls.UpdateFuncType.REMOVE.name:
         msg = "以下のURLを全てUpdate対象から外しました。\n"
     else:
@@ -179,11 +179,6 @@ def get_target_urls_in_file(file_path: str):
         ]
         return target_urls
     return []
-
-
-async def get_target_db_urls(ses):
-    urlrepo = p_repo.URLRepository(ses=ses)
-    return await urlrepo.get_all()
 
 
 async def start_add_command(ses, argp, log):
@@ -271,7 +266,7 @@ async def start_add_command(ses, argp, log):
         )
         return
     else:
-        target_db_urls = await get_target_db_urls(ses=ses)
+        target_db_urls = await update_urls.get_target_db_urls(ses=ses)
         if not target_db_urls:
             log.error("not exist urls in database")
             return
@@ -279,7 +274,12 @@ async def start_add_command(ses, argp, log):
             result = await update_urls.register_all_urls(
                 ses=ses, target_urls=target_db_urls
             )
-            log.info(create_result_message(result), order_type="add", target="all")
+            log.info(
+                create_result_message(result),
+                order_type="add",
+                target="all",
+                count=len(target_db_urls),
+            )
             return
         if argp.new:
             result = await update_urls.register_new_urls(
@@ -326,7 +326,7 @@ async def start_remove_command(ses, argp, log):
         )
         return
     else:
-        target_db_urls = await get_target_db_urls(ses=ses)
+        target_db_urls = await update_urls.get_target_db_urls(ses=ses)
         if not target_db_urls:
             log.error("not exist urls in database")
             return

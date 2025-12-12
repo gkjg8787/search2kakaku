@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <title>登録済みURL一覧</title>
+    <style>
+        body { font-family: sans-serif; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            word-break: break-all; /* 長い単語を強制的に改行 */
+        }
+        th { background-color: #f2f2f2; }
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap; /* preタグ内で自動的に改行 */
+        }
+        .actions a, .actions button {
+            display: block; /* 要素をブロックレベルにして縦に並べる */
+            width: 100%;
+            margin-bottom: 5px; /* 下に余白を追加 */
+            box-sizing: border-box;
+            white-space: nowrap; /* ボタン内のテキストが改行されないようにする */
+        }
+        .actions a {
+            margin-bottom: 15px;
+        }
+        .button-like {
+            display: inline-block;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            background-color: #4CAF50; /* 緑色 */
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            border: none;
+        }
+        .kakaku-list { background-color: #17a2b8; }
+        .url-edit { background-color: #ffc107; color: #212529; }
+
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #121212;
+                color: #e0e0e0;
+            }
+            th, td {
+                border-color: #444;
+            }
+            th {
+                background-color: #333;
+            }
+            pre {
+                background-color: #2c2c2c;
+            }
+            a {
+                color: #8ab4f8;
+            }
+            button {
+                background-color: #333;
+                color: #e0e0e0;
+                border: 1px solid #555;
+            }
+            /* Inactive / Active ボタンのホバー時（ダークモード） */
+            .actions button:hover {
+                background-color: #555;
+                color: #ffffff;
+                border-color: #666;
+            }
+            .button-like:hover {
+                opacity: 0.95;
+            }
+            .url-add {
+                background-color: #45a049; /* 少し明るい緑 */
+            }
+        }
+    </style>
+{% endblock %}
+{% block body %}
+    <h1>登録済みURL一覧</h1>
+    <nav>
+        <a href="{{ url_for('add_url_form') }}" class="button-like url-add">URLの追加</a>
+        {% if to_link %}
+        <a href="{{ url_for('kakaku_list') }}" class="button-like kakaku-list">kakakuscrapingのURL登録状況</a>
+        {% endif %}
+    </nav>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>URL</th>
+                <th>Active状態</th>
+                <th>Sitename</th>
+                <th>options</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for url in view_urls %}
+            <tr>
+                <td>{{ url.id }}</td>
+                <td><a href="{{ url.url }}" target="_blank">{{ url.url }}</a></td>
+                <td>{{ url.is_active if url.is_active is not none else 'False' }}</td>
+                <td>{{ url.sitename or '' }}</td>
+                <td>
+                    {% if url.options %}
+                    <pre>{{ url.options | tojson_japanese }}</pre>
+                    {% endif %}
+                </td>
+                <td class="actions">
+                    <a href="{{ url_for('update_url_form', url_id=url.id) }}" class="button-like url-edit">編集</a>
+                    {% if url.is_active %}
+                        <button onclick="toggleActiveState({{ url.id }}, '{{ url.url }}', false)">Inactive</button>
+                    {% else %}
+                        <button onclick="toggleActiveState({{ url.id }}, '{{ url.url }}', true)">Active</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+    async function toggleActiveState(urlId, url, setActive) {
+        let endpoint;
+        let method;
+        let body;
+        const action = setActive ? '有効化' : '無効化';
+
+        if (setActive) {
+            // Activeにする -> create_urls_api (POST /api/urls/)
+            endpoint = `{{ url_for('create_urls_api') }}`;
+            method = 'POST';
+            body = JSON.stringify({ urls: [url] });
+        } else {
+            // Inactiveにする -> inactive_urls_api (PATCH /api/urls/inactive)
+            endpoint = `{{ url_for('inactive_urls_api') }}`;
+            method = 'PATCH';
+            body = JSON.stringify({ url_ids: [urlId] });
+        }
+
+        try {
+            const response = await fetch(endpoint, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: body,
+            });
+
+            if (response.ok) {
+                alert(`URLの${action}に成功しました。`);
+                window.location.reload();
+            } else {
+                const errorData = await response.json();
+                alert(`URLの${action}に失敗しました: ${errorData.detail || response.statusText}`);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert(`エラーが発生しました: ${error}`);
+        }
+    }
+    </script>
+{% endblock %}

@@ -80,7 +80,9 @@ async def create_item_with_api(
         await upactlog.completed(id=taskactlog_id, add_subinfo=add_subinfo)
         if log:
             log.info("create item with api ... ok", item_id=item_id)
+        return add_subinfo
     else:
         await upactlog.failed(id=taskactlog_id, error_msg=msg)
         if log:
             log.error("create item with api ... ng", error_msg=msg)
+        return {"item_id": None, "error_msg": msg}

@@ -9,6 +9,7 @@ from .enums import APIURLName
 from .models import URLtoItemGetResponse
 from .factory import APIPathOptionFactory
 from app.activitylog.update import UpdateActivityLog
+from domain.schemas.schemas import KakakuItem, KakakuURLtoItem
 
 ACTIVITY_TYPE = "get_items_by_url_with_api"
 
@@ -58,32 +59,41 @@ async def get_items_by_url_with_api(
     taskactlog_id = db_taskactlog.id
     await upactlog.in_progress(id=taskactlog_id)
 
-    results = []
-    err_msgs = []
+    results: list[KakakuURLtoItem] = []
+    err_msgs: list[str] = []
     for url in urls:
         ok, msg, response = await get_items_with_api_url(
             url=url, timeout=read_config.get_api_options().post_data.timeout
         )
 
         if response and response.items:
-            items_dict = {item.item_id: item.name for item in response.items}
+            item_list = [
+                KakakuItem(item_id=item.item_id, name=item.name)
+                for item in response.items
+            ]
         else:
-            items_dict = {}
+            item_list = []
         if response and response.url_active:
-            res_dict = {"url_id": response.url_active.url_id, "items": items_dict}
+            urltoitem = KakakuURLtoItem(
+                url=url, url_id=response.url_active.url_id, items=item_list
+            )
         else:
-            res_dict = {"url_id": None, "items": items_dict}
+            urltoitem = KakakuURLtoItem(url=url, url_id=None, items=[])
         if ok:
             if log:
-                log.info("get items by url with api ... ok", response=res_dict)
+                log.info(
+                    "get items by url with api ... ok", response=urltoitem.model_dump()
+                )
         else:
             err_msgs.append(f"[{url}:{msg}]")
             if log:
                 log.error(
-                    "get items by url with api ... ng", error_msg=msg, response=res_dict
+                    "get items by url with api ... ng",
+                    error_msg=msg,
+                    response=urltoitem,
                 )
-        results.append(res_dict)
-    add_subinfo = {"response": results}
+        results.append(urltoitem)
+    add_subinfo = {"response": [r.model_dump() for r in results]}
     if not err_msgs:
         await upactlog.completed(id=taskactlog_id, add_subinfo=add_subinfo)
     elif len(err_msgs) == len(urls):
@@ -94,3 +104,4 @@ async def get_items_by_url_with_api(
         await upactlog.completed_with_error(
             id=taskactlog_id, error_msg=",".join(err_msgs), add_subinfo=add_subinfo
         )
+    return results, err_msgs

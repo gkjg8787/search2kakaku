@@ -1,14 +1,15 @@
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 
 
 class Cookie(BaseModel):
     cookie_dict_list: Optional[list[dict[str, Any]]] = None
-    return_cookies: Optional[bool] = False
+    save: Optional[bool] = False
+    load: Optional[bool] = False
 
 
 class OnError(BaseModel):
-    action_type: str = "raise"  # "raise" or "retry"
+    action_type: Literal["raise", "retry"] = "raise"
     max_retries: int | None = None
     wait_time: float | None = None
     check_exist_tag: str = ""  # CSS selector
@@ -34,6 +35,10 @@ class GeminiWaitOptions(BaseModel):
     page_wait_time: float | None = None
 
 
+class PromptOptions(BaseModel):
+    add_prompt: str = ""
+
+
 class AskGeminiOptions(BaseModel, extra="ignore"):
     sitename: str = ""
     label: str = ""
@@ -42,3 +47,4 @@ class AskGeminiOptions(BaseModel, extra="ignore"):
     recreate_parser: bool = False
     exclude_script: bool = True
     compress_whitespace: bool = False
+    prompt: PromptOptions | None = None

@@ -42,3 +42,9 @@ AUTO_UPDATE_OPTIONS = {
     "schedule": {"hour": 14},
     "notify_to_api": False,
 }
+HTML_OPTIONS = {
+    "kakaku": {
+        "to_link": False,
+        "base_url": "post_data",  # Base of the link URL, post_data or any URL
+    }
+}
