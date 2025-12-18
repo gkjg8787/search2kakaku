@@ -176,7 +176,7 @@
     </div>
     {% endif %}
 
-    {% if results %}
+    
     <div style="margin-top:1rem; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
         <label for="active-filter" style="font-weight:600; color:#495057;">状態フィルター:</label>
         <select id="active-filter" name="active_filter" style="padding:6px 8px; border-radius:4px; border:1px solid #ced4da;">
@@ -185,6 +185,7 @@
             <option value="inactive" {% if active_filter == 'inactive' %}selected{% endif %}>inactive</option>
         </select>
     </div>
+    {% if results %}
     <table class="product-table">
         <thead>
             <tr>
