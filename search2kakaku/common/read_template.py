@@ -1,5 +1,5 @@
 import json
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 
 from fastapi.templating import Jinja2Templates
 
@@ -28,13 +28,12 @@ def create_tokakaku_link(id):
     if not htmlopts.kakaku.base_url:
         return ""
     if htmlopts.kakaku.base_url == "post_data":
-        base_url = apiopts.post_data.url
+        base_url = apiopts.post_data.url.removesuffix("/api/").removesuffix("/api")
     else:
         base_url = htmlopts.kakaku.base_url
+    base_url = urljoin(base_url, "users/items/v/")
     parsed_url = urlparse(base_url)
-    return parsed_url._replace(
-        fragment="", path="/users/items/v/", params="", query=f"itemid={id}"
-    ).geturl()
+    return parsed_url._replace(query=f"itemid={id}").geturl()
 
 
 templates.env.filters["tojson_japanese"] = custom_tojson_japanese
