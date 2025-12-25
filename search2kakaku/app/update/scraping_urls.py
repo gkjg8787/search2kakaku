@@ -40,42 +40,58 @@ async def _scrape_one_url(url_id: int, urlopts: read_config.UpdateURLOptions, lo
         ok = False
         result = ""
         try:
-            match parsed_url.netloc:
-                case SupportDomain.SOFMAP.value | SupportDomain.A_SOFMAP.value:
-                    searchreq = search_models.SearchRequest(
-                        url=target_url_str,
-                        search_keyword=None,
-                        sitename=SiteName.SOFMAP.value,
-                        options=urlopts.request_options.model_dump(exclude_none=True),
-                    )
-                    ok, result = await sofmap_scraper.download_with_api(
-                        ses=ses, searchreq=searchreq, save_to_db=True
-                    )
-                case SupportDomain.GEO.value:
-                    searchreq = search_models.SearchRequest(
-                        url=target_url_str,
-                        search_keyword=None,
-                        sitename=SiteName.GEO.value,
-                        options=urlopts.request_options.model_dump(exclude_none=True),
-                    )
-                    ok, result = await geo_scraper.download_with_api(
-                        ses=ses, searchreq=searchreq, save_to_db=True
-                    )
-                case SupportDomain.IOSYS.value:
-                    searchreq = search_models.SearchRequest(
-                        url=target_url_str,
-                        search_keyword=None,
-                        sitename=SiteName.IOSYS.value,
-                        options=urlopts.request_options.model_dump(exclude_none=True),
-                    )
-                    ok, result = await iosys_scraper.download_with_api(
-                        ses=ses, searchreq=searchreq, save_to_db=True
-                    )
-                case _:
-                    db_urlopt = await urloptrepo.get(
-                        command=noti_cmd.URLUpdateParameterGetCommand(url_id=url_id)
-                    )
-                    if not db_urlopt or db_urlopt[0].sitename != SiteName.GEMINI.value:
+            db_urlopt = await urloptrepo.get(
+                command=noti_cmd.URLUpdateParameterGetCommand(url_id=url_id)
+            )
+            if db_urlopt and db_urlopt[0].sitename == SiteName.GEMINI.value:
+                searchreq = search_models.SearchRequest(
+                    url=target_url_str,
+                    search_keyword="",
+                    sitename=SiteName.GEMINI.value,
+                    options=db_urlopt[0].meta,
+                )
+                ok, result = await gemini_scraper.download_with_api(
+                    ses=ses, searchreq=searchreq, save_to_db=True
+                )
+            else:
+                match parsed_url.netloc:
+                    case SupportDomain.SOFMAP.value | SupportDomain.A_SOFMAP.value:
+                        searchreq = search_models.SearchRequest(
+                            url=target_url_str,
+                            search_keyword=None,
+                            sitename=SiteName.SOFMAP.value,
+                            options=urlopts.request_options.model_dump(
+                                exclude_none=True
+                            ),
+                        )
+                        ok, result = await sofmap_scraper.download_with_api(
+                            ses=ses, searchreq=searchreq, save_to_db=True
+                        )
+                    case SupportDomain.GEO.value:
+                        searchreq = search_models.SearchRequest(
+                            url=target_url_str,
+                            search_keyword=None,
+                            sitename=SiteName.GEO.value,
+                            options=urlopts.request_options.model_dump(
+                                exclude_none=True
+                            ),
+                        )
+                        ok, result = await geo_scraper.download_with_api(
+                            ses=ses, searchreq=searchreq, save_to_db=True
+                        )
+                    case SupportDomain.IOSYS.value:
+                        searchreq = search_models.SearchRequest(
+                            url=target_url_str,
+                            search_keyword=None,
+                            sitename=SiteName.IOSYS.value,
+                            options=urlopts.request_options.model_dump(
+                                exclude_none=True
+                            ),
+                        )
+                        ok, result = await iosys_scraper.download_with_api(
+                            ses=ses, searchreq=searchreq, save_to_db=True
+                        )
+                    case _:
                         msg = f"Unsupported netloc: {parsed_url.netloc}"
                         if log:
                             log.error(
@@ -84,16 +100,6 @@ async def _scrape_one_url(url_id: int, urlopts: read_config.UpdateURLOptions, lo
                                 netloc=parsed_url.netloc,
                             )
                         return {"url_id": url_id, "ok": False, "msg": msg}
-
-                    searchreq = search_models.SearchRequest(
-                        url=target_url_str,
-                        search_keyword="",
-                        sitename=SiteName.GEMINI.value,
-                        options=db_urlopt[0].meta,
-                    )
-                    ok, result = await gemini_scraper.download_with_api(
-                        ses=ses, searchreq=searchreq, save_to_db=True
-                    )
         except Exception as e:
             if log:
                 log.error(f"Scraping failed for {target_url_str} with error: {e}")
