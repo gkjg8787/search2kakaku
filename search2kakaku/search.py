@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from contextlib import asynccontextmanager
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -214,7 +215,8 @@ async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
 
 
 async def sofmap_command(argp, log):
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         if argp.categorylist:
             category_list = await get_category_list(
                 sitename=SiteName.SOFMAP.value,
@@ -272,7 +274,8 @@ async def sofmap_command(argp, log):
 
 
 async def geo_command(argp, log):
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         if not argp.search_query:
             log.info("paramter error. search_query is None")
             return
@@ -307,7 +310,8 @@ async def geo_command(argp, log):
 
 
 async def iosys_command(argp, log):
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         if not argp.search_query:
             log.info("paramter error. search_query is None")
             return

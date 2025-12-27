@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import argparse
 import uuid
 import json
@@ -389,7 +390,8 @@ async def main():
     log.info("parse params", args=argp)
 
     db_util.create_db_and_tables()
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         match argp.command:
             case CommandOrder.ADD:
                 await start_add_command(ses=ses, argp=argp, log=log)

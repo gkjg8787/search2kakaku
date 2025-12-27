@@ -1,6 +1,8 @@
 import asyncio
+from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import uuid
+
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,7 +24,8 @@ from app.enums import SiteName, SupportDomain
 
 
 async def _scrape_one_url(url_id: int, urlopts: read_config.UpdateURLOptions, log=None):
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         urlrepo = p_repo.URLRepository(ses=ses)
         urloptrepo = n_repo.URLUpdateParameterRepository(ses=ses)
         target_url = await urlrepo.get(command=p_cmd.URLGetCommand(id=url_id))

@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import argparse
 import uuid
 
@@ -30,7 +31,8 @@ async def main():
     argp = set_argparse()
 
     db_util.create_db_and_tables()
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         await scraping_urls.scraping_and_save_target_urls(
             ses=ses, log=log, caller_type=CALLER_TYPE, url_id=argp.url_id
         )

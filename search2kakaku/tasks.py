@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 
 from celery import Celery
 from celery.schedules import crontab
@@ -29,7 +30,8 @@ CALLER_TYPE = "celery"
 
 
 async def a_update_urls_and_notify_to_api():
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         await scraping_urls.scraping_and_save_target_urls(
             ses=ses, caller_type=CALLER_TYPE
         )

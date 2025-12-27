@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import argparse
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -158,7 +159,8 @@ async def send_log_to_api(argp, log):
     else:
         end_utc_date = None
 
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         await send_pricelog.send_target_URLs_to_api(
             ses=ses,
             start_utc_date=start_utc_date,
@@ -185,8 +187,8 @@ async def main():
     if not ok:
         log.error("invalid URL", url=msg)
         return
-
-    async for ses in db_util.get_async_session():
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    async with scoped_session() as ses:
         if argp.command == CommandOrder.CREATE_ITEM.value:
             await create_item.create_item_with_api(
                 ses=ses,

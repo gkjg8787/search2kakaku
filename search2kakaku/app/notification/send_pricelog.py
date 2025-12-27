@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 import uuid
 import asyncio
+from contextlib import asynccontextmanager
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -129,7 +130,8 @@ async def _send_one_url_to_api(
     init_subinfo: dict | None = None,
     log=None,
 ):
-    async for ses in get_async_session():
+    scoped_session = asynccontextmanager(get_async_session)
+    async with scoped_session() as ses:
         upactlog = UpdateActivityLog(ses=ses)
         urlrepo = p_repo.URLRepository(ses=ses)
         pricelogrepo = p_repo.PriceLogRepository(ses=ses)
