@@ -62,17 +62,32 @@ class ActivityLogRepository(a_repo.IActivityLogRepository):
             )
         if command.caller_type:
             stmt = stmt.where(m_actlog.ActivityLog.caller_type == command.caller_type)
-        if command.is_error:
+        if command.is_error is True:
             stmt = stmt.where(func.length(m_actlog.ActivityLog.error_msg) >= 1)
+        elif command.is_error is False:
+            stmt = stmt.where(func.length(m_actlog.ActivityLog.error_msg) == 0)
+
         if command.updated_at_start:
             stmt = stmt.where(
                 m_actlog.ActivityLog.updated_at >= command.updated_at_start
             )
         if command.updated_at_end:
-            stmt = stmt.where(m_actlog.ActivityLog.updated_at >= command.updated_at_end)
+            stmt = stmt.where(m_actlog.ActivityLog.updated_at <= command.updated_at_end)
+
+        stmt = stmt.order_by(m_actlog.ActivityLog.updated_at.desc())
+
+        if command.limit:
+            stmt = stmt.limit(command.limit)
 
         res = await self.session.execute(stmt)
-        results = res.scalars()
-        if not results:
-            return []
-        return results.all()
+        return list(res.scalars().all())
+
+    async def get_activity_types(self) -> list[str]:
+        stmt = select(m_actlog.ActivityLog.activity_type).distinct()
+        res = await self.session.execute(stmt)
+        return list(res.scalars().all())
+
+    async def get_caller_types(self) -> list[str]:
+        stmt = select(m_actlog.ActivityLog.caller_type).distinct()
+        res = await self.session.execute(stmt)
+        return list(res.scalars().all())

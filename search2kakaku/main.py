@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from routers.api import api_router
 from routers.html.urls import router as html_router
 from routers.html.kakaku import router as kakaku_router
+from routers.html.logs import router as log_router
 from databases.sql.create_db import create_db
 from common.logger_config import configure_logger
 
@@ -27,6 +28,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(api_router)
 app.include_router(html_router)
 app.include_router(kakaku_router)
+app.include_router(log_router)
 
 
 @app.get("/")

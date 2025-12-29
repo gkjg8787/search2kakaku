@@ -11,3 +11,11 @@ class IActivityLogRepository(ABC):
     @abstractmethod
     async def get(self, command: ActivityLogGetCommand) -> list[ActivityLog]:
         pass
+
+    @abstractmethod
+    async def get_activity_types(self) -> list[str]:
+        pass
+
+    @abstractmethod
+    async def get_caller_types(self) -> list[str]:
+        pass

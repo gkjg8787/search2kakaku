@@ -10,6 +10,7 @@ class ActivityLogGetCommand(BaseModel):
     activity_types: list[str] = Field(default_factory=list)
     current_states: list[str] = Field(default_factory=list)
     caller_type: str | None = None
-    is_error: bool = False
+    is_error: bool | None = None
     updated_at_start: datetime | None = None
     updated_at_end: datetime | None = None
+    limit: int = 100
