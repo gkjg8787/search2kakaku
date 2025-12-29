@@ -160,14 +160,17 @@ async def send_log_to_api(argp, log):
         end_utc_date = None
 
     scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        await send_pricelog.send_target_URLs_to_api(
-            ses=ses,
-            start_utc_date=start_utc_date,
-            end_utc_date=end_utc_date,
-            log=log,
-            caller_type=CALLER_TYPE,
-        )
+    try:
+        async with scoped_session() as ses:
+            await send_pricelog.send_target_URLs_to_api(
+                ses=ses,
+                start_utc_date=start_utc_date,
+                end_utc_date=end_utc_date,
+                log=log,
+                caller_type=CALLER_TYPE,
+            )
+    finally:
+        db_util.async_engine.dispose()
 
 
 async def main():
@@ -188,30 +191,33 @@ async def main():
         log.error("invalid URL", url=msg)
         return
     scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        if argp.command == CommandOrder.CREATE_ITEM.value:
-            await create_item.create_item_with_api(
-                ses=ses,
-                item_name=argp.name,
-                urls=argp.url,
-                log=log,
-                caller_type=CALLER_TYPE,
-            )
-            return
-        if argp.command == CommandOrder.ADD_URL.value:
-            await add_urls.add_urls_to_item_with_api(
-                ses=ses,
-                item_id=argp.item_id,
-                urls=argp.url,
-                log=log,
-                caller_type=CALLER_TYPE,
-            )
-            return
-        if argp.command == CommandOrder.GET_ITEM.value:
-            await get_items.get_items_by_url_with_api(
-                ses=ses, urls=argp.url, log=log, caller_type=CALLER_TYPE
-            )
-            return
+    try:
+        async with scoped_session() as ses:
+            if argp.command == CommandOrder.CREATE_ITEM.value:
+                await create_item.create_item_with_api(
+                    ses=ses,
+                    item_name=argp.name,
+                    urls=argp.url,
+                    log=log,
+                    caller_type=CALLER_TYPE,
+                )
+                return
+            if argp.command == CommandOrder.ADD_URL.value:
+                await add_urls.add_urls_to_item_with_api(
+                    ses=ses,
+                    item_id=argp.item_id,
+                    urls=argp.url,
+                    log=log,
+                    caller_type=CALLER_TYPE,
+                )
+                return
+            if argp.command == CommandOrder.GET_ITEM.value:
+                await get_items.get_items_by_url_with_api(
+                    ses=ses, urls=argp.url, log=log, caller_type=CALLER_TYPE
+                )
+                return
+    finally:
+        db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":

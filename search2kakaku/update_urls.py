@@ -32,10 +32,13 @@ async def main():
 
     db_util.create_db_and_tables()
     scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        await scraping_urls.scraping_and_save_target_urls(
-            ses=ses, log=log, caller_type=CALLER_TYPE, url_id=argp.url_id
-        )
+    try:
+        async with scoped_session() as ses:
+            await scraping_urls.scraping_and_save_target_urls(
+                ses=ses, log=log, caller_type=CALLER_TYPE, url_id=argp.url_id
+            )
+    finally:
+        db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":

@@ -391,17 +391,20 @@ async def main():
 
     db_util.create_db_and_tables()
     scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        match argp.command:
-            case CommandOrder.ADD:
-                await start_add_command(ses=ses, argp=argp, log=log)
-                return
-            case CommandOrder.REMOVE:
-                await start_remove_command(ses=ses, argp=argp, log=log)
-                return
-            case CommandOrder.VIEW:
-                await start_view_command(ses=ses, argp=argp, log=log)
-                return
+    try:
+        async with scoped_session() as ses:
+            match argp.command:
+                case CommandOrder.ADD:
+                    await start_add_command(ses=ses, argp=argp, log=log)
+                    return
+                case CommandOrder.REMOVE:
+                    await start_remove_command(ses=ses, argp=argp, log=log)
+                    return
+                case CommandOrder.VIEW:
+                    await start_view_command(ses=ses, argp=argp, log=log)
+                    return
+    finally:
+        await db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":

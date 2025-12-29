@@ -214,143 +214,137 @@ async def save_result(ses: AsyncSession, pricelog_list: list[m_pricelog.PriceLog
     await pricelogrepo.save_all(pricelog_entries=pricelog_list)
 
 
-async def sofmap_command(argp, log):
-    scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        if argp.categorylist:
-            category_list = await get_category_list(
-                sitename=SiteName.SOFMAP.value,
-                is_akiba=argp.akiba,
-            )
-            log.info(category_list)
-            return
-        if not argp.search_query:
-            log.info("paramter error. search_query is None")
-            return
-        gid = await get_category_id(
+async def sofmap_command(argp, log, ses):
+    if argp.categorylist:
+        category_list = await get_category_list(
             sitename=SiteName.SOFMAP.value,
             is_akiba=argp.akiba,
-            category_name=argp.category,
         )
-        log.info("get parameter", gid=gid, **vars(argp))
-        searchoptions = sofmap_models.SofmapSearchDataOptions(
-            is_akiba=argp.akiba,
-            direct_search=argp.direct_search,
-            gid=gid,
-            product_type=argp.condition,
-            display_count=argp.displaycount,
-            order_by=argp.orderby,
-        )
-        searchreq = search_model.SearchRequest(
-            url="",
-            search_keyword=argp.search_query,
-            sitename=SiteName.SOFMAP.value,
-            options=searchoptions.model_dump(exclude_none=True),
-        )
+        log.info(category_list)
+        return
+    if not argp.search_query:
+        log.info("paramter error. search_query is None")
+        return
+    gid = await get_category_id(
+        sitename=SiteName.SOFMAP.value,
+        is_akiba=argp.akiba,
+        category_name=argp.category,
+    )
+    log.info("get parameter", gid=gid, **vars(argp))
+    searchoptions = sofmap_models.SofmapSearchDataOptions(
+        is_akiba=argp.akiba,
+        direct_search=argp.direct_search,
+        gid=gid,
+        product_type=argp.condition,
+        display_count=argp.displaycount,
+        order_by=argp.orderby,
+    )
+    searchreq = search_model.SearchRequest(
+        url="",
+        search_keyword=argp.search_query,
+        sitename=SiteName.SOFMAP.value,
+        options=searchoptions.model_dump(exclude_none=True),
+    )
 
-        log.info("setting params", searchreq=searchreq.model_dump())
-        try:
-            ok, result = await sofmap_scraper.download_with_api(
-                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
-            )
-            if not ok:
-                log.error("download failed", error_msg=result)
-                return
-        except Exception as e:
-            log.error(f"download error type:{type(e).__name__}, {e}")
+    log.info("setting params", searchreq=searchreq.model_dump())
+    try:
+        ok, result = await sofmap_scraper.download_with_api(
+            ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
+        )
+        if not ok:
+            log.error("download failed", error_msg=result)
             return
-        log.info("download end")
-        if not isinstance(result, list):
-            log.error(f"result is not list. type :{type(result)}", result=result)
-            return
-        if not result:
-            log.info("data is None")
-            return
-        if argp.without_registration:
-            log.info("data is save")
-        if argp.verbose:
-            log.info(result, verbose=True)
+    except Exception as e:
+        log.error(f"download error type:{type(e).__name__}, {e}")
+        return
+    log.info("download end")
+    if not isinstance(result, list):
+        log.error(f"result is not list. type :{type(result)}", result=result)
+        return
+    if not result:
+        log.info("data is None")
+        return
+    if argp.without_registration:
+        log.info("data is save")
+    if argp.verbose:
+        log.info(result, verbose=True)
     return
 
 
-async def geo_command(argp, log):
-    scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        if not argp.search_query:
-            log.info("paramter error. search_query is None")
-            return
-        searchreq = search_model.SearchRequest(
-            url="",
-            search_keyword=argp.search_query,
-            sitename=SiteName.GEO.value,
+async def geo_command(argp, log, ses):
+    if not argp.search_query:
+        log.info("paramter error. search_query is None")
+        return
+    searchreq = search_model.SearchRequest(
+        url="",
+        search_keyword=argp.search_query,
+        sitename=SiteName.GEO.value,
+    )
+    log.info("setting params", searchreq=searchreq.model_dump())
+    try:
+        ok, result = await geo_scraper.download_with_api(
+            ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
         )
-        log.info("setting params", searchreq=searchreq.model_dump())
-        try:
-            ok, result = await geo_scraper.download_with_api(
-                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
-            )
-            if not ok:
-                log.error("download failed", error_msg=result)
-                return
-        except Exception as e:
-            log.error(f"download error type:{type(e).__name__}, {e}")
+        if not ok:
+            log.error("download failed", error_msg=result)
             return
-        log.info("download end")
-        if not isinstance(result, list):
-            log.error(f"result is not list. type :{type(result)}", result=result)
-            return
-        if not result:
-            log.info("data is None")
-            return
-        if argp.without_registration:
-            log.info("data is save")
-        if argp.verbose:
-            log.info(result, verbose=True)
+    except Exception as e:
+        log.error(f"download error type:{type(e).__name__}, {e}")
+        return
+    log.info("download end")
+    if not isinstance(result, list):
+        log.error(f"result is not list. type :{type(result)}", result=result)
+        return
+    if not result:
+        log.info("data is None")
+        return
+    if argp.without_registration:
+        log.info("data is save")
+    if argp.verbose:
+        log.info(result, verbose=True)
     return
 
 
-async def iosys_command(argp, log):
-    scoped_session = asynccontextmanager(db_util.get_async_session)
-    async with scoped_session() as ses:
-        if not argp.search_query:
-            log.info("paramter error. search_query is None")
-            return
-        log.info("get parameter", **vars(argp))
-        searchoptions = iosys_models.IosysSearchDataOptions(
-            condition=argp.condition,
-            sort=argp.sort,
-            min_price=argp.min_price,
-            max_price=argp.max_price,
-        )
-        searchreq = search_model.SearchRequest(
-            url="",
-            search_keyword=argp.search_query,
-            sitename=SiteName.IOSYS.value,
-            options=searchoptions.model_dump(exclude_none=True),
-        )
+async def iosys_command(argp, log, ses):
+    if not argp.search_query:
+        log.info("paramter error. search_query is None")
+        return
+    log.info("get parameter", **vars(argp))
+    searchoptions = iosys_models.IosysSearchDataOptions(
+        condition=argp.condition,
+        sort=argp.sort,
+        min_price=argp.min_price,
+        max_price=argp.max_price,
+    )
+    searchreq = search_model.SearchRequest(
+        url="",
+        search_keyword=argp.search_query,
+        sitename=SiteName.IOSYS.value,
+        options=searchoptions.model_dump(exclude_none=True),
+    )
 
-        log.info("setting params", searchreq=searchreq.model_dump())
-        try:
-            ok, result = await iosys_scraper.download_with_api(
-                ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
-            )
-            if not ok:
-                log.error("download failed", error_msg=result)
-                return
-        except Exception as e:
-            log.error(f"download error type:{type(e).__name__}, {e}")
+    log.info("setting params", searchreq=searchreq.model_dump())
+    try:
+        ok, result = await iosys_scraper.download_with_api(
+            ses=ses, searchreq=searchreq, save_to_db=not argp.without_registration
+        )
+        if not ok:
+            log.error("download failed", error_msg=result)
             return
-        log.info("download end")
-        if not isinstance(result, list):
-            log.error(f"result is not list. type :{type(result)}", result=result)
-            return
-        if not result:
-            log.info("data is None")
-            return
-        if argp.without_registration:
-            log.info("data is save")
-        if argp.verbose:
-            log.info(result, verbose=True)
+    except Exception as e:
+        log.error(f"download error type:{type(e).__name__}, {e}")
+        return
+    log.info("download end")
+    if not isinstance(result, list):
+        log.error(f"result is not list. type :{type(result)}", result=result)
+        return
+    if not result:
+        log.info("data is None")
+        return
+    if argp.without_registration:
+        log.info("data is save")
+    if argp.verbose:
+        log.info(result, verbose=True)
     return
 
 
@@ -361,15 +355,20 @@ async def main():
 
     argp = set_argparse()
     create_db()
-    match argp.sitename:
-        case SiteName.SOFMAP.value:
-            await sofmap_command(argp=argp, log=log)
-        case SiteName.GEO.value:
-            await geo_command(argp=argp, log=log)
-        case SiteName.IOSYS.value:
-            await iosys_command(argp=argp, log=log)
-        case _:
-            raise ValueError("invalid sitename")
+    scoped_session = asynccontextmanager(db_util.get_async_session)
+    try:
+        async with scoped_session() as ses:
+            match argp.sitename:
+                case SiteName.SOFMAP.value:
+                    await sofmap_command(argp=argp, log=log, ses=ses)
+                case SiteName.GEO.value:
+                    await geo_command(argp=argp, log=log, ses=ses)
+                case SiteName.IOSYS.value:
+                    await iosys_command(argp=argp, log=log, ses=ses)
+                case _:
+                    raise ValueError("invalid sitename")
+    finally:
+        await db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":
