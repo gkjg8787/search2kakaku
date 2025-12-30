@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from domain.models.pricelog import (
     repository as m_repository,
@@ -41,19 +42,44 @@ class PriceLogRepository(m_repository.IPriceLogRepository):
             await ses.refresh(pricelog)
 
     async def get(
-        self, command: m_command.PriceLogGetCommand
+        self,
+        command: m_command.PriceLogGetCommand,
+        limit: int = 100,
+        title: str | None = None,
+        condition: str | None = None,
+        url_filter: str | None = None,
     ) -> list[m_pricelog.PriceLog]:
         ses = self.session
         stmt = select(m_pricelog.PriceLog)
+        stmt = stmt.options(
+            selectinload(m_pricelog.PriceLog.url),
+            selectinload(m_pricelog.PriceLog.shop),
+        )
+
+        if command.url or url_filter:
+            stmt = stmt.join(m_pricelog.URL)
+
         if command.id:
             stmt = stmt.where(m_pricelog.PriceLog.id == command.id)
         if command.url:
-            stmt = stmt.join(m_pricelog.URL)
             stmt = stmt.where(m_pricelog.URL.url == command.url)
+
+        if url_filter:
+            stmt = stmt.where(m_pricelog.URL.url.contains(url_filter))
+        if title:
+            stmt = stmt.where(m_pricelog.PriceLog.title.contains(title))
+        if condition:
+            stmt = stmt.where(m_pricelog.PriceLog.condition.contains(condition))
+
         if command.start_utc_date:
             stmt = stmt.where(m_pricelog.PriceLog.created_at >= command.start_utc_date)
         if command.end_utc_date:
             stmt = stmt.where(m_pricelog.PriceLog.created_at <= command.end_utc_date)
+
+        stmt = stmt.order_by(m_pricelog.PriceLog.created_at.desc())
+        if limit:
+            stmt = stmt.limit(limit)
+
         ret = await ses.execute(stmt)
         results = ret.scalars()
         if not results:

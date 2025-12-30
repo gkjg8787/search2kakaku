@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price Logs</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .filters { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 10px; }
+        .filter-item { display: flex; flex-direction: column; }
+        .filter-item label { font-size: 0.85em; font-weight: bold; margin-bottom: 3px; }
+        .date-range { display: flex; align-items: center; gap: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f2f2f2; }
+        button { padding: 6px 12px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background-color: #0056b3; }
+        select, input { padding: 5px; border: 1px solid #ccc; border-radius: 3px; }
+        .img-thumb { max-width: 50px; max-height: 50px; }
+        .price { font-weight: bold; color: #d9534f; }
+        .url-link { font-size: 0.8em; color: #007bff; text-decoration: none; display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .url-link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Price Logs</h1>
+
+    <div class="filters">
+        <form method="get" action="">
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label>日付範囲</label>
+                    <div class="date-range">
+                        <input type="date" name="start_date" value="{{ filters.start_date }}">
+                        <span>〜</span>
+                        <input type="date" name="end_date" value="{{ filters.end_date }}">
+                    </div>
+                </div>
+                
+                <div class="filter-item">
+                    <label>表示件数</label>
+                    <input type="number" name="limit" value="{{ filters.limit }}" min="1" style="width: 80px;">
+                </div>
+
+                <div class="filter-item">
+                    <label>Title</label>
+                    <input type="text" name="title" value="{{ filters.title }}" placeholder="タイトル検索">
+                </div>
+
+                <div class="filter-item">
+                    <label>Condition</label>
+                    <input type="text" name="condition" value="{{ filters.condition }}" placeholder="状態検索">
+                </div>
+
+                <div class="filter-item">
+                    <label>URL</label>
+                    <input type="text" name="url" value="{{ filters.url }}" placeholder="URL検索">
+                </div>
+
+                <div class="filter-item" style="justify-content: flex-end;">
+                    <button type="submit">検索</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Created At</th>
+                <th>Image</th>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Condition</th>
+                <th>Shop</th>
+                <th>URL</th>
+                <th>On Sale</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.id }}</td>
+                <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{% if log.image_url %}<img src="{{ log.image_url }}" class="img-thumb">{% endif %}</td>
+                <td>{{ log.title }}</td>
+                <td class="price">¥{{ "{:,}".format(log.price) }}</td>
+                <td>{{ log.condition }}</td>
+                <td>{{ log.shop.name if log.shop else '-' }}</td>
+                <td><a href="{{ log.url.url if log.url else '#' }}" class="url-link" target="_blank">{{ log.url.url if log.url else '-' }}</a></td>
+                <td>{{ 'Yes' if log.on_sale else 'No' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

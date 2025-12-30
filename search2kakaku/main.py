@@ -33,4 +33,6 @@ app.include_router(log_router)
 
 @app.get("/")
 async def root(request: Request):
-    return None
+    return RedirectResponse(
+        url=request.url_for("read_urls"), status_code=status.HTTP_302_FOUND
+    )
