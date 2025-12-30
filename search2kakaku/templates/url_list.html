@@ -80,12 +80,10 @@
     </style>
 {% endblock %}
 {% block body %}
+    {% include "_navbar.html" %}
     <h1>登録済みURL一覧</h1>
     <nav>
         <a href="{{ url_for('add_url_form') }}" class="button-like url-add">URLの追加</a>
-        {% if to_link %}
-        <a href="{{ url_for('kakaku_list') }}" class="button-like kakaku-list">kakakuscrapingのURL登録状況</a>
-        {% endif %}
     </nav>
 
     <table>

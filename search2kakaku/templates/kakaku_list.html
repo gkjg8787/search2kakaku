@@ -158,10 +158,8 @@
 {% block body %}
 
 <div class="container">
+    {% include "_navbar.html" %}
     <h1>kakakuscrapingのURL登録状況</h1>
-    <nav>
-        <a href="{{ url_for('url_list') }}" class="button-like">URL一覧へ</a>
-    </nav>
     {% if error_msgs %}
     <div class="error-container">
         <strong>エラーが発生しました:</strong>
