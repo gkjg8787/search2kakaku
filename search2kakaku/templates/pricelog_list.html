@@ -21,6 +21,18 @@
         .price { font-weight: bold; color: #d9534f; }
         .url-link { font-size: 0.8em; color: #007bff; text-decoration: none; display: block; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .url-link:hover { text-decoration: underline; }
+
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #121212; color: #e0e0e0; }
+            .filters { background-color: #1e1e1e; border-color: #444; }
+            th, td { border-color: #444; }
+            th { background-color: #333; }
+            select, input { background-color: #333; color: #e0e0e0; border-color: #555; }
+            button { background-color: #333; color: #e0e0e0; border: 1px solid #555; }
+            button:hover { background-color: #555; }
+            .price { color: #ff6b6b; }
+            .url-link { color: #6cb2ff; }
+        }
     </style>
 </head>
 <body>
