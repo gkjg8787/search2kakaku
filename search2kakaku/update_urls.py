@@ -38,7 +38,7 @@ async def main():
                 ses=ses, log=log, caller_type=CALLER_TYPE, url_id=argp.url_id
             )
     finally:
-        db_util.async_engine.dispose()
+        await db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":

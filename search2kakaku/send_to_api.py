@@ -170,7 +170,7 @@ async def send_log_to_api(argp, log):
                 caller_type=CALLER_TYPE,
             )
     finally:
-        db_util.async_engine.dispose()
+        await db_util.async_engine.dispose()
 
 
 async def main():
@@ -217,7 +217,7 @@ async def main():
                 )
                 return
     finally:
-        db_util.async_engine.dispose()
+        await db_util.async_engine.dispose()
 
 
 if __name__ == "__main__":

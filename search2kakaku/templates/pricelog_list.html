@@ -86,10 +86,15 @@
                 <th>Image</th>
                 <th>Title</th>
                 <th>Price</th>
+                <th>Point</th>
                 <th>Condition</th>
                 <th>Shop</th>
                 <th>URL</th>
                 <th>On Sale</th>
+                <th>StockMsg</th>
+                <th>SubPrice</th>
+                <th>UsedURLList</th>
+                <th>Others</th>
             </tr>
         </thead>
         <tbody>
@@ -100,10 +105,25 @@
                 <td>{% if log.image_url %}<img src="{{ log.image_url }}" class="img-thumb">{% endif %}</td>
                 <td>{{ log.title }}</td>
                 <td class="price">¥{{ "{:,}".format(log.price) }}</td>
+                <td>{{ log.point }}</td>
                 <td>{{ log.condition }}</td>
                 <td>{{ log.shop.name if log.shop else '-' }}</td>
                 <td><a href="{{ log.url.url if log.url else '#' }}" class="url-link" target="_blank">{{ log.url.url if log.url else '-' }}</a></td>
                 <td>{{ 'Yes' if log.on_sale else 'No' }}</td>
+                <td>{{ log.stock_msg }}</td>
+                <td>{{ log.sub_price }}</td>
+                <td>{{ log.used_url_list }}</td>
+                <td>
+                    {%if log.others %}
+                    <details>
+                        <summary>その他</summary>
+                        {{ log.others | tojson_japanese}}
+                    </details>
+                    {% else %}
+                    {}
+                    {% endif %}
+                    
+                </td>
             </tr>
             {% endfor %}
         </tbody>
