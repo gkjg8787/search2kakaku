@@ -39,7 +39,7 @@ REDIS_OPTIONS = {
 }
 AUTO_UPDATE_OPTIONS = {
     "enable": True,
-    "schedule": {"hour": 14},
+    "schedule": {"hour": 14, "minute": 0},  # Every day at 14:00
     "notify_to_api": False,
 }
 HTML_OPTIONS = {
