@@ -28,7 +28,7 @@ def _create_seleinum_options():
     page_load_timeout = input("Page Load Timeout (seconds, default 30): ").strip()
     tag_wait_timeout = input("Tag Wait Timeout (seconds, default 10): ").strip()
     page_wait_time = input("Page Wait Time (seconds, default 0): ").strip()
-    return gemini_models.GeminiWaitOptions(
+    return gemini_models.SeleniumWaitOptions(
         wait_css_selector=wait_css_selector,
         page_load_timeout=(
             int(page_load_timeout) if page_load_timeout.isdigit() else None
